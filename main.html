@@ -227,6 +227,42 @@
             align-items: center;
         }
 
+        /* Slide-in right panels for Prompts and Codex */
+        .slide-panel-right {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            background: var(--bg-secondary);
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 4500;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide-panel-right.open {
+            transform: translateX(0);
+        }
+
+        .slide-panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-secondary);
+        }
+
+        .slide-panel-body {
+            padding: 12px;
+            overflow: auto;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            flex: 1;
+        }
+
         .chapter-scenes {
             padding-left: 8px;
             margin-top: 6px;
@@ -579,7 +615,7 @@
 
                     <!-- AI Status -->
                     <div class="ai-status">
-                        <div class="ai-status-item">
+                        <div class="ai-status-item" style="cursor:pointer;" @click="showAISettings = true">
                             <div class="status-dot" :class="aiStatus"></div>
                             <span x-text="aiStatusText"></span>
                         </div>
@@ -590,6 +626,8 @@
                             <h2 x-text="currentProject.name" style="margin:0;padding-right:8px;"></h2>
 
                             <div style="display:flex;align-items:center;gap:6px;">
+                                <button class="btn btn-secondary" @click.stop="showCodexPanel = true"
+                                    title="Codex">Codex</button>
                                 <button class="menu-button" @click.stop="openMenu = !openMenu"
                                     title="Project menu">⋯</button>
                                 <div x-show="openMenu" x-cloak @click.away="openMenu = false" x-transition
@@ -787,7 +825,10 @@
                                             </select>
                                         </label>
 
-                                        <!-- Removed move-to-chapter from generation panel; use sidebar menu instead -->
+                                        <div style="display:flex;gap:8px;margin-top:6px;">
+                                            <button class="btn btn-secondary"
+                                                @click="showPromptsPanel = true">Prompts</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -868,6 +909,106 @@
             </div>
         </template>
 
+        <!-- AI Settings Modal (placeholder) -->
+        <template x-if="showAISettings">
+            <div class="modal-overlay" @click.self="showAISettings = false">
+                <div class="modal">
+                    <h3>AI Provider Settings</h3>
+                    <p style="color:var(--text-secondary);">Configure AI providers and API keys here (placeholder).</p>
+                    <div style="margin-top:12px;">
+                        <label style="font-size:12px;color:var(--text-secondary);">Provider
+                            <input type="text" placeholder="e.g., local / remote"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                        </label>
+                    </div>
+                    <div class="modal-buttons" style="margin-top:18px;">
+                        <button class="btn btn-secondary" @click="showAISettings = false">Close</button>
+                        <button class="btn btn-primary" @click="showAISettings = false">Save</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Prompts Slide Panel -->
+        <div class="slide-panel-right" :class="{ 'open': showPromptsPanel }" x-cloak aria-hidden="true">
+            <div class="slide-panel-header">
+                <h3 style="margin:0;">Prompts</h3>
+                <div>
+                    <button class="btn btn-secondary" @click="showPromptsPanel = false">Close</button>
+                </div>
+            </div>
+            <div class="slide-panel-body">
+                <div style="display:flex;gap:12px;height:100%;">
+                    <div style="width:40%;overflow:auto;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <strong style="color:var(--text-primary);">Categories</strong>
+                            <button class="btn btn-secondary" @click="createPrompt('prose')">+ New</button>
+                        </div>
+
+                        <template x-for="cat in promptCategories" :key="cat">
+                            <div style="margin-bottom:12px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                                    @click="promptCollapsed[cat] = !promptCollapsed[cat]">
+                                    <div style="text-transform:capitalize;font-weight:700;color:var(--text-primary);"
+                                        x-text="cat"></div>
+                                    <div style="font-size:12px;color:var(--text-secondary);"
+                                        x-text="`${(prompts.filter(p => p.category === cat) || []).length}`"></div>
+                                </div>
+                                <div x-show="!promptCollapsed[cat]" x-cloak style="margin-top:6px;">
+                                    <template x-for="pr in prompts.filter(p => p.category === cat)" :key="pr.id">
+                                        <div @click="openPrompt(pr.id)"
+                                            :class="{ 'active': currentPrompt && currentPrompt.id === pr.id }"
+                                            style="padding:8px;border-radius:6px;background:var(--bg-tertiary);margin-bottom:6px;cursor:pointer;">
+                                            <div style="font-weight:600;color:var(--text-primary);" x-text="pr.title">
+                                            </div>
+                                            <div style="font-size:11px;color:var(--text-secondary);"
+                                                x-text="new Date(pr.modified).toLocaleString()"></div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div style="flex:1;display:flex;flex-direction:column;">
+                        <div style="flex:0 0 auto;margin-bottom:6px;">
+                            <div x-show="!currentPrompt" style="color:var(--text-secondary);">Select a prompt or create
+                                a new one.</div>
+                            <div x-show="currentPrompt">
+                                <input type="text" x-model="currentPrompt.title"
+                                    style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);border-radius:6px;margin-bottom:6px;">
+                            </div>
+                        </div>
+                        <div style="flex:1;overflow:auto;">
+                            <textarea x-model="promptEditorContent"
+                                style="width:100%;height:100%;padding:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);border-radius:6px;"></textarea>
+                        </div>
+                        <div style="flex:0 0 auto;display:flex;gap:8px;margin-top:8px;">
+                            <button class="btn btn-primary" @click="savePrompt" :disabled="!currentPrompt">Save</button>
+                            <button class="btn btn-secondary" @click="deletePrompt(currentPrompt.id)"
+                                x-show="currentPrompt">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Codex Slide Panel -->
+        <div class="slide-panel-right" :class="{ 'open': showCodexPanel }" x-cloak aria-hidden="true">
+            <div class="slide-panel-header">
+                <h3 style="margin:0;">Codex</h3>
+                <div>
+                    <button class="btn btn-secondary" @click="showCodexPanel = false">Close</button>
+                </div>
+            </div>
+            <div class="slide-panel-body">
+                <p style="color:var(--text-secondary);">Story bible placeholder. Add character bios and world notes here
+                    later.</p>
+                <textarea
+                    style="width:100%;height:100%;padding:8px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);border-radius:6px;">Codex notes go here.</textarea>
+            </div>
+        </div>
+
         <!-- New Scene Modal -->
         <template x-if="showNewSceneModal">
             <div class="modal-overlay" @click.self="showNewSceneModal = false">
@@ -940,6 +1081,14 @@
             }
         });
 
+        // Add prompts and codex tables (v3)
+        db.version(3).stores({
+            prompts: 'id, projectId, category, title, created, modified',
+            codex: 'id, projectId, title, created, modified'
+        }).upgrade(async tx => {
+            // noop migration for now; existing installs will get empty prompts/codex
+        });
+
         // Alpine.js App
         document.addEventListener('alpine:init', () => {
             Alpine.data('app', () => ({
@@ -949,6 +1098,9 @@
                 selectedProjectId: null,
                 showRenameProjectModal: false,
                 renameProjectName: '',
+                showAISettings: false,
+                showPromptsPanel: false,
+                showCodexPanel: false,
                 currentScene: null,
                 chapters: [],
                 scenes: [], // flattened scenes list for quick access
@@ -970,6 +1122,14 @@
                 povCharacter: '',
                 pov: '3rd person limited',
                 tense: 'past',
+
+                // Prompts / Codex state
+                prompts: [],
+                promptCategories: ['prose', 'rewrite', 'summary', 'workshop'],
+                promptCollapsed: {},
+                currentPrompt: null,
+                promptEditorContent: '',
+                newPromptTitle: '',
 
                 // AI State
                 aiWorker: null,
@@ -1006,6 +1166,21 @@
                     }
 
                     await this.initializeAI();
+
+                    // Global Escape key handler to close slide panels / settings
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape' || e.key === 'Esc') {
+                            // Close the panels if they're open
+                            if (this.showAISettings || this.showPromptsPanel || this.showCodexPanel) {
+                                this.showAISettings = false;
+                                this.showPromptsPanel = false;
+                                this.showCodexPanel = false;
+                                // stop propagation so nested handlers don't re-open
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        }
+                    });
                 },
 
                 async initializeAI() {
@@ -1137,6 +1312,7 @@
                     // persist last opened project
                     try { localStorage.setItem('writingway:lastProject', proj.id); } catch (e) { }
                     await this.loadChapters();
+                    await this.loadPrompts();
                     if (this.scenes.length > 0) {
                         await this.loadScene(this.scenes[0].id);
                     } else {
@@ -1154,6 +1330,69 @@
                         this.showRenameProjectModal = false;
                     } catch (e) {
                         console.error('Failed to rename project:', e);
+                    }
+                },
+
+                // Prompts management
+                async loadPrompts() {
+                    if (!this.currentProject) {
+                        this.prompts = [];
+                        return;
+                    }
+                    try {
+                        this.prompts = await db.prompts.where('projectId').equals(this.currentProject.id).sortBy('modified');
+                        // ensure collapsed map has entries
+                        for (let c of this.promptCategories) {
+                            if (this.promptCollapsed[c] === undefined) this.promptCollapsed[c] = false;
+                        }
+                    } catch (e) {
+                        console.error('Failed to load prompts:', e);
+                        this.prompts = [];
+                    }
+                },
+
+                async createPrompt(category) {
+                    if (!this.currentProject) return;
+                    const title = this.newPromptTitle && this.newPromptTitle.trim() ? this.newPromptTitle.trim() : 'New Prompt';
+                    const id = Date.now().toString();
+                    const now = new Date();
+                    const prompt = { id, projectId: this.currentProject.id, category, title, content: '', created: now, modified: now };
+                    await db.prompts.add(prompt);
+                    this.newPromptTitle = '';
+                    await this.loadPrompts();
+                    this.openPrompt(id);
+                },
+
+                openPrompt(id) {
+                    const p = this.prompts.find(x => x.id === id);
+                    if (!p) return;
+                    this.currentPrompt = { ...p };
+                    this.promptEditorContent = p.content || '';
+                },
+
+                async savePrompt() {
+                    if (!this.currentPrompt) return;
+                    try {
+                        const now = new Date();
+                        await db.prompts.update(this.currentPrompt.id, { title: this.currentPrompt.title, content: this.promptEditorContent, modified: now });
+                        await this.loadPrompts();
+                        // refresh currentPrompt reference
+                        this.currentPrompt = await db.prompts.get(this.currentPrompt.id);
+                        this.promptEditorContent = this.currentPrompt.content || '';
+                    } catch (e) {
+                        console.error('Failed to save prompt:', e);
+                    }
+                },
+
+                async deletePrompt(id) {
+                    if (!id) return;
+                    if (!confirm('Delete this prompt?')) return;
+                    try {
+                        await db.prompts.delete(id);
+                        if (this.currentPrompt && this.currentPrompt.id === id) this.currentPrompt = null;
+                        await this.loadPrompts();
+                    } catch (e) {
+                        console.error('Failed to delete prompt:', e);
                     }
                 },
 
