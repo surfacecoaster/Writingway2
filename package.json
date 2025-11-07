@@ -6,6 +6,7 @@
         "playwright": "^1.40.0"
     },
     "scripts": {
-        "smoke": "node tests/smoke.js"
+        "smoke": "node tests/smoke.js",
+        "unit": "node tests/gen-buildPrompt.js"
     }
 }

@@ -129,7 +129,22 @@ document.addEventListener('alpine:init', () => {
                 console.error('Failed to load projects/last project:', e);
             }
 
-            await this.initializeAI();
+            // Initialize AI via extracted module (src/ai.js)
+            if (window.AI && typeof window.AI.init === 'function') {
+                try {
+                    await window.AI.init(this);
+                } catch (e) {
+                    console.error('AI init failed:', e);
+                    this.aiStatus = 'error';
+                    this.aiStatusText = 'AI init failed';
+                    this.showModelLoading = false;
+                }
+            } else {
+                // Fallback if ai.js is not loaded
+                this.aiStatus = 'error';
+                this.aiStatusText = 'AI module missing';
+                this.showModelLoading = false;
+            }
 
             // Global Escape key handler to close slide panels / settings
             // BUT ignore when focus is inside an input/textarea or contenteditable element
@@ -159,38 +174,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        async initializeAI() {
-            try {
-                this.showModelLoading = true;
-                this.loadingMessage = 'Connecting to AI server...';
-                this.loadingProgress = 30;
 
-                // Check if llama-server is running
-                const response = await fetch('http://localhost:8080/health');
-
-                if (response.ok) {
-                    this.loadingProgress = 100;
-                    this.loadingMessage = 'Connected to AI!';
-
-                    await new Promise(resolve => setTimeout(resolve, 500));
-
-                    this.aiStatus = 'ready';
-                    this.aiStatusText = 'AI Ready (Local Server)';
-                    this.showModelLoading = false;
-
-                    console.log('✓ Connected to llama-server successfully');
-                } else {
-                    throw new Error('Server not responding');
-                }
-            } catch (error) {
-                console.error('Could not connect to AI server:', error);
-                this.aiStatus = 'error';
-                this.aiStatusText = 'AI server not running';
-                this.showModelLoading = false;
-
-                console.log('Make sure start.bat launched llama-server successfully');
-            }
-        },
 
         async loadLastProject() {
             // fallback: pick first project if available
@@ -809,17 +793,18 @@ document.addEventListener('alpine:init', () => {
 
         // Normalize chapter and scene order fields to be consecutive integers.
         async normalizeAllOrders() {
-            if (!this.currentProject) return;
+            if (window.DBUtils && typeof window.DBUtils.normalizeAllOrders === 'function') {
+                return window.DBUtils.normalizeAllOrders(this);
+            }
 
-            // Normalize chapters
+            // Fallback: if DBUtils is not available, perform local normalization
+            if (!this.currentProject) return;
             const chs = await db.chapters.where('projectId').equals(this.currentProject.id).sortBy('order');
             for (let i = 0; i < chs.length; i++) {
                 if (chs[i].order !== i) {
                     try { await db.chapters.update(chs[i].id, { order: i }); } catch (e) { }
                 }
             }
-
-            // Normalize scenes within each chapter
             for (let ch of chs) {
                 const scenes = await db.scenes.where('projectId').equals(this.currentProject.id).and(s => s.chapterId === ch.id).sortBy('order');
                 for (let j = 0; j < scenes.length; j++) {
@@ -828,8 +813,6 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             }
-
-            // Reload chapters/scenes so UI reflects normalized ordering
             await this.loadChapters();
         }
     }));
