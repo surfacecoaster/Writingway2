@@ -3,7 +3,7 @@ const path = require('path');
 
 (async () => {
   const projectRoot = path.resolve(__dirname, '..');
-  const fileUrl = 'file:///' + path.join(projectRoot, 'main.html').replace(/\\/g, '/');
+  const fileUrl = process.env.APP_URL || ('file:///' + path.join(projectRoot, 'main.html').replace(/\\/g, '/'));
 
   console.log('Opening:', fileUrl);
   const browser = await chromium.launch({ headless: true });
