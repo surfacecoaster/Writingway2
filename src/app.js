@@ -133,6 +133,13 @@ db.version(3).stores({
     // noop migration for now; existing installs will get empty prompts/codex
 });
 
+// Add compendium table (v4)
+db.version(4).stores({
+    compendium: 'id, projectId, category, title, modified, tags'
+}).upgrade(async tx => {
+    // noop migration; new installs will get empty compendium
+});
+
 // Alpine.js App
 document.addEventListener('alpine:init', () => {
     Alpine.data('app', () => ({
