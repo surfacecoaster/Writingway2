@@ -217,6 +217,8 @@ document.addEventListener('alpine:init', () => {
         quickSearchMatches: [],
         quickSearchSelectedIndex: 0,
         quickInsertedCompendium: [],
+        // Map of compendium mention titles to IDs in current beat: {'Dog': 'id123', ...}
+        beatCompendiumMap: {},
         isGenerating: false,
         isSaving: false,
         saveStatus: 'Saved',
@@ -284,6 +286,8 @@ document.addEventListener('alpine:init', () => {
         rewriteOutput: '',
         rewriteInProgress: false,
         rewritePromptPreview: '',
+        showRewritePromptList: false,
+        selectedRewritePromptId: null,
         // track last mouseup info to avoid treating selection mouseup as an explicit click
         _lastMouseUpTargetTag: null,
         _lastMouseUpTime: 0,
@@ -494,17 +498,21 @@ document.addEventListener('alpine:init', () => {
 
         buildRewritePrompt() {
             try {
-                // Get the current prose prompt if available
-                let prosePrompt = '';
-                if (this.currentPrompt && this.currentPrompt.content) {
-                    prosePrompt = this.currentPrompt.content;
+                // Show the rewrite prompt list for selection
+                this.showRewritePromptList = true;
+
+                // If a rewrite prompt is selected, use it
+                let rewritePrompt = '';
+                if (this.selectedRewritePromptId) {
+                    const selected = this.prompts.find(p => p.id === this.selectedRewritePromptId);
+                    if (selected && selected.content) {
+                        rewritePrompt = selected.content;
+                    }
                 }
-                // Build rewrite prompt
-                let prompt = 'Rewrite the following passage to be more vivid and polished while preserving its meaning and details. Keep roughly the same length.\n\n';
-                if (prosePrompt) {
-                    prompt = prosePrompt + '\n\n' + prompt;
-                }
-                prompt += 'ORIGINAL TEXT:\n' + this.rewriteOriginalText + '\n\nREWRITTEN TEXT:';
+
+                // Build the full prompt
+                let prompt = rewritePrompt || 'Rewrite the following passage to be more vivid and polished while preserving its meaning and details. Keep roughly the same length.';
+                prompt += '\n\nORIGINAL TEXT:\n' + this.rewriteOriginalText + '\n\nREWRITTEN TEXT:';
                 this.rewritePromptPreview = prompt;
                 return prompt;
             } catch (e) {
@@ -558,6 +566,8 @@ document.addEventListener('alpine:init', () => {
 
         discardRewrite() {
             this.showRewriteModal = false;
+            this.showRewritePromptList = false;
+            this.selectedRewritePromptId = null;
             this.rewriteOriginalText = '';
             this.rewriteOutput = '';
             this.rewritePromptPreview = '';
@@ -1683,7 +1693,7 @@ document.addEventListener('alpine:init', () => {
         selectQuickMatch(item) {
             try {
                 if (!item || !item.id) return;
-                // Replace the last @token before caret with the item's title plus marker
+                // Replace the last @token before caret with @[Title] format
                 const ta = document.querySelector('.beat-input');
                 if (!ta) return;
                 const pos = ta.selectionStart;
@@ -1692,12 +1702,13 @@ document.addEventListener('alpine:init', () => {
                 if (lastAt === -1) return;
                 const before = text.substring(0, lastAt);
                 const after = text.substring(pos);
-                // Insert the visible legacy marker form so users can see references inline
-                const insert = `${item.title} [[comp:${item.id}]]`;
+                // Insert clean mention format: @[Title] with trailing space
+                const insert = `@[${item.title}] `;
                 this.beatInput = before + insert + after;
+                // Store mapping of title to ID for later resolution
+                this.beatCompendiumMap[item.title] = item.id;
                 // remember inserted compendium id for this scene (avoid duplicates)
                 if (!this.quickInsertedCompendium.includes(item.id)) this.quickInsertedCompendium.push(item.id);
-                // (no mirror mapping needed)
                 // hide suggestions
                 this.showQuickSearch = false;
                 this.quickSearchMatches = [];
@@ -1707,21 +1718,28 @@ document.addEventListener('alpine:init', () => {
             } catch (e) { console.error('selectQuickMatch error', e); }
         },
 
-        // Parse beatInput for [[comp:<id>]] markers and return resolved compendium rows
+        // Parse beatInput for @[Title] mentions and return resolved compendium rows
         async resolveCompendiumEntriesFromBeat(beatText) {
             try {
                 if (!beatText) return [];
-                const ids = [];
-                // Support both visible [[comp:id]] markers (legacy) and invisible unit-separator markers \u001Fcomp:id\u001F
-                const reLegacy = /\[\[comp:([^\]]+)\]\]/g;
+                const ids = new Set();
+
+                // Parse @[Title] mentions and look up IDs from our mapping
+                const reMention = /@\[([^\]]+)\]/g;
                 let m;
+                while ((m = reMention.exec(beatText)) !== null) {
+                    const title = m[1];
+                    if (this.beatCompendiumMap[title]) {
+                        ids.add(this.beatCompendiumMap[title]);
+                    }
+                }
+
+                // Also support legacy formats for backward compatibility
+                const reLegacy = /\[\[comp:([^\]]+)\]\]/g;
                 while ((m = reLegacy.exec(beatText)) !== null) {
-                    if (m[1]) ids.push(m[1]);
+                    if (m[1]) ids.add(m[1]);
                 }
-                const reHidden = /\u001Fcomp:([^\u001F]+)\u001F/g;
-                while ((m = reHidden.exec(beatText)) !== null) {
-                    if (m[1]) ids.push(m[1]);
-                }
+
                 const out = [];
                 for (const id of ids) {
                     try {
@@ -1733,18 +1751,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) { return []; }
         },
 
-        // Render beatInput into HTML for the mirror overlay, coloring titles before markers
-        renderedBeat() {
-            try {
-                const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                let out = esc(this.beatInput || '');
-                // Replace patterns like "Title [[comp:id]]" with a colored title and the visible marker
-                out = out.replace(/(.+?)\s*\[\[comp:([^\]]+)\]\]/g, (m, title, id) => {
-                    return `<span class="comp-chip">${esc(title)}</span> [[comp:${esc(id)}]]`;
-                });
-                return out;
-            } catch (e) { return esc(this.beatInput || ''); }
-        },
+
 
         // Temporary: build and show the exact prompt that will be sent to the LLM.
         // This honors POV, tense, selected prose prompt, and includes scene context.

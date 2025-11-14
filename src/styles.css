@@ -837,35 +837,9 @@ body {
 .beat-input {
     position: relative;
     z-index: 1;
-    color: transparent;
+    color: var(--text-primary);
     caret-color: var(--text-primary);
     line-height: 20px;
-}
-
-.beat-mirror {
-    position: absolute;
-    z-index: 2;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    white-space: pre-wrap;
-    font-family: inherit;
-    font-size: 14px;
-    line-height: 20px;
-    color: var(--text-primary);
-    padding: 12px;
-    overflow: hidden;
-}
-
-.comp-chip {
-    display: inline-block;
-    color: #7fc9ff;
-    background: rgba(127, 201, 255, 0.08);
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-weight: 600;
 }
 
 .beat-input:focus {
