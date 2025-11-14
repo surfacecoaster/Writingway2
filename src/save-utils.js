@@ -12,10 +12,19 @@
                 app.isSaving = false;
                 return false;
             }
-
             // compute word count from scene content
             const contentText = (scene.content || '').trim();
             const wordCount = contentText ? contentText.split(/\s+/).filter(w => w.length > 0).length : 0;
+
+            // read previous content and scene record to detect changes and mark summary stale if needed
+            let prevContent = null;
+            let prevScene = null;
+            try {
+                prevContent = await db.content.get(scene.id);
+            } catch (e) { /* ignore */ }
+            try {
+                prevScene = await db.scenes.get(scene.id);
+            } catch (e) { /* ignore */ }
 
             // persist content and scene metadata using the global `db` instance
             const contentRecord = {
@@ -42,6 +51,14 @@
                 wordCount
             };
 
+            // If the content changed and there was an existing summary, mark the summary stale
+            try {
+                const contentChanged = prevContent && (prevContent.text || '') !== (scene.content || '');
+                if (contentChanged && prevScene && prevScene.summary) {
+                    scenePatch.summaryStale = true;
+                }
+            } catch (e) { /* ignore */ }
+
             await db.scenes.put(scenePatch);
 
             // Update in-memory lists
@@ -55,6 +72,21 @@
                 if (Array.isArray(app.scenes)) {
                     const ss = app.scenes.find((x) => x.id === scene.id);
                     if (ss) Object.assign(ss, scenePatch);
+                }
+
+                // If we marked the summary stale, update in-memory summary flags so the UI reflects immediately
+                if (scenePatch.summaryStale) {
+                    try {
+                        if (ch && Array.isArray(ch.scenes)) {
+                            const s2 = ch.scenes.find((x) => x.id === scene.id);
+                            if (s2) s2.summaryStale = true;
+                        }
+                        if (Array.isArray(app.scenes)) {
+                            const ss2 = app.scenes.find((x) => x.id === scene.id);
+                            if (ss2) ss2.summaryStale = true;
+                        }
+                        if (this.currentScene && this.currentScene.id === scene.id) this.currentScene.summaryStale = true;
+                    } catch (e) { /* ignore */ }
                 }
             } catch (e) { /* ignore */ }
 

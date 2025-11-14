@@ -234,6 +234,11 @@ document.addEventListener('alpine:init', () => {
         pov: '3rd person limited',
         tense: 'past',
 
+        // Scene summary panel
+        showSummaryPanel: false,
+        summaryText: '',
+        summaryTargetSceneId: null,
+
         // Prompts / Codex state
         prompts: [],
         promptCategories: ['prose', 'rewrite', 'summary', 'workshop'],
@@ -259,6 +264,12 @@ document.addEventListener('alpine:init', () => {
         showModelLoading: false,
         loadingMessage: 'Setting up AI...',
         loadingProgress: 0,
+
+        // Rewrite selection UI
+        showRewriteBtn: false,
+        rewriteBtnX: 0,
+        rewriteBtnY: 0,
+        selectedTextForRewrite: '',
 
         // Computed
         get currentSceneWords() {
@@ -340,6 +351,106 @@ document.addEventListener('alpine:init', () => {
                     e.stopPropagation();
                 }
             });
+
+            // Selection change handler: show a floating "Rewrite" button when text is selected
+            document.addEventListener('selectionchange', () => {
+                try {
+                    const ta = document.querySelector('.editor-textarea');
+                    if (!ta) {
+                        this.showRewriteBtn = false;
+                        return;
+                    }
+
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    if (typeof start !== 'number' || typeof end !== 'number' || end <= start) {
+                        this.showRewriteBtn = false;
+                        return;
+                    }
+
+                    // Compute approximate coordinates for the end of the selection
+                    const coords = this._getTextareaSelectionCoords(ta, end);
+                    if (!coords) {
+                        this.showRewriteBtn = false;
+                        return;
+                    }
+
+                    // Position the button a few pixels below the end of the selection
+                    // Use the right edge so the button anchors after the selected text
+                    const btnLeft = (coords.right != null) ? coords.right + 4 : coords.left;
+                    // Keep inside viewport with small margin
+                    this.rewriteBtnX = Math.min(window.innerWidth - 140, Math.max(8, btnLeft));
+                    this.rewriteBtnY = Math.max(8, coords.top + coords.height + 6);
+                    this.selectedTextForRewrite = ta.value.substring(start, end);
+                    this.showRewriteBtn = true;
+                } catch (e) {
+                    // don't let selection code break the app
+                    this.showRewriteBtn = false;
+                }
+            });
+        },
+
+        // Compute selection coordinates inside a textarea by mirroring styles into a hidden div.
+        _getTextareaSelectionCoords(textarea, selectionIndex) {
+            try {
+                const rect = textarea.getBoundingClientRect();
+
+                // Create mirror div placed at the textarea's position
+                const div = document.createElement('div');
+                const style = window.getComputedStyle(textarea);
+                // Copy relevant textarea styles
+                div.style.position = 'absolute';
+                div.style.visibility = 'hidden';
+                div.style.whiteSpace = 'pre-wrap';
+                div.style.wordWrap = 'break-word';
+                div.style.overflow = 'hidden';
+                div.style.boxSizing = 'border-box';
+                div.style.width = rect.width + 'px';
+                div.style.left = rect.left + 'px';
+                div.style.top = rect.top + 'px';
+                div.style.font = style.font || `${style.fontSize} ${style.fontFamily}`;
+                div.style.fontSize = style.fontSize;
+                div.style.lineHeight = style.lineHeight;
+                div.style.padding = style.padding;
+                div.style.border = style.border;
+                div.style.letterSpacing = style.letterSpacing;
+                div.style.whiteSpace = 'pre-wrap';
+
+                const text = textarea.value.substring(0, selectionIndex);
+                // Replace trailing spaces with nbsp so measurement matches
+                const safe = text.replace(/\n$/g, '\n\u200b');
+                div.textContent = safe;
+
+                const span = document.createElement('span');
+                span.textContent = textarea.value.substring(selectionIndex, selectionIndex + 1) || '\u200b';
+                div.appendChild(span);
+
+                document.body.appendChild(div);
+                const spanRect = span.getBoundingClientRect();
+                const coords = { left: spanRect.left, top: spanRect.top, height: spanRect.height, right: spanRect.right };
+                document.body.removeChild(div);
+
+                return coords;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        // Placeholder: invoked when user clicks the Rewrite button. We'll wire actual prompt/generation later.
+        rewriteSelection() {
+            try {
+                // For now, store selected text into lastGenText and open prompts panel as a stub
+                this.lastGenText = this.selectedTextForRewrite || '';
+                console.log('Rewrite requested for:', this.lastGenText);
+                // Provide a small visual cue
+                this.saveStatus = 'Rewrite requested';
+                setTimeout(() => { this.saveStatus = 'Saved'; }, 1500);
+                // Hide button after triggering
+                this.showRewriteBtn = false;
+                // Future: open a rewrite editor / populate prompt
+            } catch (e) {
+                console.error('rewriteSelection error', e);
+            }
         },
 
 
@@ -354,6 +465,95 @@ document.addEventListener('alpine:init', () => {
                 if (this.scenes.length > 0) {
                     await this.loadScene(this.scenes[0].id);
                 }
+            }
+        },
+
+        // Open the summary slide-panel for a scene (foundation - placeholder)
+        async openSceneSummary(sceneId) {
+            try {
+                const scene = (this.scenes || []).find(s => s.id === sceneId) || (this.currentScene && this.currentScene.id === sceneId ? this.currentScene : null);
+                this.summaryTargetSceneId = sceneId;
+                this.summaryText = (scene && (scene.summary || '')) || '';
+                this.showSummaryPanel = true;
+            } catch (e) {
+                console.error('openSceneSummary error', e);
+            }
+        },
+
+        // Placeholder: generate a quick summary from the scene content (client-side heuristic)
+        summarizeScene() {
+            try {
+                const id = this.summaryTargetSceneId;
+                if (!id) return;
+                // Take the scene text if loaded, fall back to scenes list
+                const scene = (this.scenes || []).find(s => s.id === id) || (this.currentScene && this.currentScene.id === id ? this.currentScene : null);
+                const text = (scene && scene.content) || (this.currentScene && this.currentScene.content) || '';
+                if (!text) {
+                    this.summaryText = '';
+                    return;
+                }
+
+                // Simple heuristic: take first 2 sentences or first 200 chars
+                const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+                let summary = '';
+                if (sentences.length >= 2) {
+                    summary = (sentences[0] + ' ' + sentences[1]).trim();
+                } else {
+                    summary = text.replace(/\s+/g, ' ').trim().slice(0, 200);
+                    if (text.length > 200) summary += '…';
+                }
+
+                this.summaryText = summary;
+            } catch (e) {
+                console.error('summarizeScene error', e);
+            }
+        },
+
+        // Save the summary into IndexedDB and update in-memory scene
+        async saveSceneSummary() {
+            try {
+                const id = this.summaryTargetSceneId;
+                if (!id) return;
+                // update DB (create/overwrite summary field and summaryUpdated)
+                await db.scenes.update(id, { summary: this.summaryText, summaryUpdated: new Date().toISOString(), summarySource: 'manual', summaryStale: false, modified: new Date() });
+
+                // Update in-memory scenes list
+                const s = (this.scenes || []).find(x => x.id === id);
+                if (s) {
+                    s.summary = this.summaryText;
+                    s.summaryUpdated = new Date().toISOString();
+                    s.summarySource = 'manual';
+                    s.summaryStale = false;
+                }
+                // Also update chapter-scoped scenes so the sidebar reflects changes immediately
+                try {
+                    const sceneObj = (this.scenes || []).find(x => x.id === id) || this.currentScene;
+                    if (sceneObj && sceneObj.chapterId) {
+                        const ch = (this.chapters || []).find(c => c.id === sceneObj.chapterId);
+                        if (ch && Array.isArray(ch.scenes)) {
+                            const cs = ch.scenes.find(x => x.id === id);
+                            if (cs) {
+                                cs.summary = this.summaryText;
+                                cs.summaryUpdated = new Date().toISOString();
+                                cs.summarySource = 'manual';
+                                cs.summaryStale = false;
+                            }
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+                if (this.currentScene && this.currentScene.id === id) {
+                    this.currentScene.summary = this.summaryText;
+                    this.currentScene.summaryUpdated = new Date().toISOString();
+                    this.currentScene.summarySource = 'manual';
+                    this.currentScene.summaryStale = false;
+                }
+
+                this.showSummaryPanel = false;
+                this.summaryTargetSceneId = null;
+                this.saveStatus = 'Summary saved';
+                setTimeout(() => { this.saveStatus = 'Saved'; }, 1200);
+            } catch (e) {
+                console.error('saveSceneSummary error', e);
             }
         },
 

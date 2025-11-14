@@ -124,10 +124,19 @@
                                         <div class="scene-item"
                                             :class="{ 'active': currentScene && currentScene.id === scene.id }"
                                             @click="loadScene(scene.id)"
+                                            :title="`${scene.title}: ${scene.summary ? (scene.summaryStale ? 'Summary outdated' : 'Has summary') : 'No summary yet'}`"
+                                            :aria-label="`${scene.title}: ${scene.summary ? (scene.summaryStale ? 'Summary outdated' : 'Has summary') : 'No summary yet'}`"
                                             style="display:flex;justify-content:space-between;align-items:center;">
-                                            <div>
-                                                <div class="scene-title" x-text="scene.title"></div>
-                                                <div class="scene-meta" x-text="`${scene.wordCount || 0} words`"></div>
+                                            <div style="display:flex;align-items:center;gap:8px;">
+                                                <span class="summary-dot"
+                                                    :class="{ 'has': scene.summary && !scene.summaryStale, 'stale': scene.summaryStale, 'none': !scene.summary }"
+                                                    :title="`${scene.title}: ${scene.summary ? (scene.summaryStale ? 'Summary outdated' : 'Has summary') : 'No summary yet'}`"
+                                                    :aria-label="`${scene.title}: ${scene.summary ? (scene.summaryStale ? 'Summary outdated' : 'Has summary') : 'No summary yet'}`"></span>
+                                                <div>
+                                                    <div class="scene-title" x-text="scene.title"></div>
+                                                    <div class="scene-meta" x-text="`${scene.wordCount || 0} words`">
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="item-actions" style="margin-left:12px;"
                                                 x-data="{ openMenu:false }">
@@ -159,6 +168,8 @@
                                                         up</button>
                                                     <button @click.stop="moveSceneDown(scene.id); openMenu=false">Move
                                                         down</button>
+                                                    <button
+                                                        @click.stop="openSceneSummary(scene.id); openMenu=false">Summary</button>
                                                     <button @click.stop="deleteScene(scene.id); openMenu=false">Delete
                                                         scene</button>
                                                 </div>
@@ -297,6 +308,12 @@
             </div>
         </template>
 
+        <!-- Floating Rewrite button (appears when text selected in scene textarea) -->
+        <button x-show="showRewriteBtn" x-cloak @click="rewriteSelection"
+            :style="`position:fixed;left:${rewriteBtnX}px;top:${rewriteBtnY}px;z-index:6000;`" class="rewrite-btn">
+            Rewrite
+        </button>
+
         <!-- Model Loading Screen -->
         <template x-if="showModelLoading">
             <div class="welcome-screen">
@@ -361,6 +378,30 @@
                 </div>
             </div>
         </template>
+
+        <!-- Scene Summary Panel -->
+        <div class="slide-panel-right" :class="{ 'open': showSummaryPanel }" x-cloak aria-hidden="true">
+            <div class="slide-panel-header">
+                <h3 style="margin:0;">Scene Summary</h3>
+                <div>
+                    <button class="btn btn-secondary" @click="showSummaryPanel = false">Close</button>
+                </div>
+            </div>
+            <div class="slide-panel-body">
+                <div style="display:flex;flex-direction:column;height:100%;">
+                    <div style="flex:1;overflow:auto;">
+                        <textarea x-model="summaryText" rows="12"
+                            style="width:100%;margin-top:8px;padding:12px;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;resize:vertical;"></textarea>
+                    </div>
+
+                    <div
+                        style="flex:0 0 auto;display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
+                        <button class="btn btn-secondary" @click="summarizeScene">Summarize</button>
+                        <button class="btn btn-primary" @click="saveSceneSummary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- AI Settings Modal (placeholder) -->
         <template x-if="showAISettings">
