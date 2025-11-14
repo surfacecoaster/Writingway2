@@ -684,6 +684,23 @@
             const beat = document.querySelector('.beat-input');
             if (!separator || !beat) return false;
 
+            // Attempt to restore a previously saved beat height (clamped to min/max)
+            try {
+                const raw = localStorage.getItem('ww2_beatHeight');
+                if (raw) {
+                    const parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed)) {
+                        const style = window.getComputedStyle(beat);
+                        const minH = parseInt(style.minHeight) || 40;
+                        const maxH = parseInt(style.maxHeight) || 1000;
+                        const restored = clamp(parsed, minH, maxH);
+                        beat.style.height = restored + 'px';
+                    }
+                }
+            } catch (err) {
+                // ignore storage errors
+            }
+
             let dragging = false;
             let startY = 0;
             let startHeight = 0;
@@ -698,6 +715,8 @@
                 const maxH = parseInt(style.maxHeight) || 1000;
                 newH = clamp(newH, minH, maxH);
                 beat.style.height = newH + 'px';
+                // remember last applied height so stop() can persist it (avoids race with clientHeight)
+                beat.dataset._lastHeight = String(newH);
                 e.preventDefault();
             };
 
@@ -709,6 +728,14 @@
                 document.removeEventListener('mouseup', stop);
                 document.removeEventListener('touchend', stop);
                 document.body.style.userSelect = '';
+                try {
+                    const finalH = parseInt(beat.dataset._lastHeight || beat.clientHeight || 0, 10);
+                    if (!isNaN(finalH) && finalH > 0) {
+                        localStorage.setItem('ww2_beatHeight', String(finalH));
+                    }
+                } catch (err) {
+                    // ignore storage errors
+                }
             };
 
             const start = (e) => {
