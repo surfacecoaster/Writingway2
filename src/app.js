@@ -897,16 +897,7 @@ document.addEventListener('alpine:init', () => {
 
 
         async loadLastProject() {
-            // fallback: pick first project if available
-            const projects = await db.projects.toArray();
-            if (projects.length > 0) {
-                this.currentProject = projects[0];
-                this.selectedProjectId = this.currentProject.id;
-                await this.loadChapters();
-                if (this.scenes.length > 0) {
-                    await this.loadScene(this.scenes[0].id);
-                }
-            }
+            await window.ProjectManager.loadLastProject(this);
         },
 
         // Open the summary slide-panel for a scene (foundation - placeholder)
@@ -1048,248 +1039,44 @@ document.addEventListener('alpine:init', () => {
 
         // Project Management
         async createProject() {
-            if (!this.newProjectName) return;
-
-            const project = {
-                id: Date.now().toString(),
-                name: this.newProjectName,
-                created: new Date(),
-                modified: new Date()
-            };
-
-            await db.projects.add(project);
-            this.currentProject = project;
-            this.showNewProjectModal = false;
-            this.newProjectName = '';
-
-            // refresh projects list and select the new project
-            await this.loadProjects();
-            await this.selectProject(project.id);
-            await this.createDefaultScene();
+            await window.ProjectManager.createProject(this, this.newProjectName);
         },
 
         async createDefaultScene() {
-            // Ensure there's at least one chapter; reuse existing if present to avoid duplicates
-            let chapter = (await db.chapters.where('projectId').equals(this.currentProject.id).sortBy('order'))[0];
-            if (!chapter) {
-                chapter = {
-                    id: Date.now().toString() + '-c',
-                    projectId: this.currentProject.id,
-                    title: 'Chapter 1',
-                    order: 0,
-                    created: new Date(),
-                    modified: new Date()
-                };
-                await db.chapters.add(chapter);
-            }
-
-            // determine next scene order within chapter
-            let nextOrder = 0;
-            try {
-                nextOrder = await db.scenes.where('projectId').equals(this.currentProject.id).and(s => s.chapterId === chapter.id).count();
-            } catch (e) {
-                nextOrder = 0;
-            }
-
-            const scene = {
-                id: Date.now().toString(),
-                projectId: this.currentProject.id,
-                chapterId: chapter.id,
-                title: 'Scene 1',
-                order: nextOrder,
-                // initialize with current POV options
-                povCharacter: this.povCharacter || '',
-                pov: this.pov || '3rd person limited',
-                tense: this.tense || 'past',
-                created: new Date(),
-                modified: new Date()
-            };
-
-            await db.scenes.add(scene);
-            await db.content.add({
-                sceneId: scene.id,
-                text: '',
-                wordCount: 0
-            });
-
-            // Normalize orders and reload structured data
-            await this.normalizeAllOrders();
-            await this.loadScene(scene.id);
+            await window.ProjectManager.createDefaultScene(this);
         },
 
         async loadProjects() {
-            this.projects = await db.projects.orderBy('created').reverse().toArray();
+            await window.ProjectManager.loadProjects(this);
         },
 
         // Fix scenes that may have been saved without a projectId (legacy or accidental overwrite).
         // Uses chapter.projectId when available, otherwise assigns the first project in the DB.
         async migrateMissingSceneProjectIds() {
-            try {
-                const scenes = await db.scenes.toArray();
-                if (!scenes || scenes.length === 0) return;
-                const projects = await db.projects.toArray();
-                const defaultProject = projects && projects[0] ? projects[0].id : null;
-
-                for (const s of scenes) {
-                    if (!s.projectId) {
-                        let projectId = null;
-                        if (s.chapterId) {
-                            const ch = await db.chapters.get(s.chapterId).catch(() => null);
-                            if (ch && ch.projectId) projectId = ch.projectId;
-                        }
-                        if (!projectId && defaultProject) projectId = defaultProject;
-                        if (projectId) {
-                            await db.scenes.update(s.id, { projectId });
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn('migrateMissingSceneProjectIds failed:', e);
-            }
+            await window.ProjectManager.migrateMissingSceneProjectIds();
         },
 
         async selectProject(projectId) {
-            const proj = await db.projects.get(projectId);
-            if (!proj) return;
-            this.currentProject = proj;
-            this.selectedProjectId = proj.id;
-            // persist last opened project
-            try { localStorage.setItem('writingway:lastProject', proj.id); } catch (e) { }
-            await this.loadChapters();
-            await this.loadPrompts();
-            // restore prose prompt selection for this project
-            try { await this.loadSelectedProsePrompt(); } catch (e) { /* ignore */ }
-            if (this.scenes.length > 0) {
-                await this.loadScene(this.scenes[0].id);
-            } else {
-                this.currentScene = null;
-            }
+            await window.ProjectManager.selectProject(this, projectId);
         },
 
         // Load persisted prose prompt selection for the current project (localStorage key per project)
         async loadSelectedProsePrompt() {
-            try {
-                if (!this.currentProject || !this.currentProject.id) {
-                    this.selectedProsePromptId = null;
-                    return;
-                }
-                const key = `writingway:proj:${this.currentProject.id}:prosePrompt`;
-                const raw = localStorage.getItem(key);
-                if (!raw) {
-                    this.selectedProsePromptId = null;
-                    return;
-                }
-                // Ensure the stored id actually exists in the DB. Prefer a direct DB check
-                // so the persisted selection survives across reloads even if in-memory
-                // `this.prompts` hasn't been populated yet.
-                try {
-                    const dbRow = await db.prompts.get(raw);
-                    if (dbRow && dbRow.category === 'prose') {
-                        this.selectedProsePromptId = raw;
-                        // Also prime the in-memory currentPrompt so the UI reflects the selection
-                        try {
-                            this.currentPrompt = Object.assign({}, dbRow);
-                            this.promptEditorContent = dbRow.content || '';
-                        } catch (e) { /* ignore */ }
-                        return;
-                    }
-                } catch (e) {
-                    // ignore DB errors and fallthrough to clearing
-                }
-
-                // Fallback: check in-memory prompts list
-                const exists = (this.prompts || []).some(p => p.id === raw && p.category === 'prose');
-                this.selectedProsePromptId = exists ? raw : null;
-            } catch (e) {
-                this.selectedProsePromptId = null;
-            }
+            await window.ProjectManager.loadSelectedProsePrompt(this);
         },
 
         // Persist selected prose prompt id per project
         saveSelectedProsePrompt(id) {
-            try {
-                if (!this.currentProject || !this.currentProject.id) return;
-                const key = `writingway:proj:${this.currentProject.id}:prosePrompt`;
-                if (!id) {
-                    localStorage.removeItem(key);
-                    this.selectedProsePromptId = null;
-                } else {
-                    localStorage.setItem(key, id);
-                    this.selectedProsePromptId = id;
-                }
-            } catch (e) { /* ignore */ }
+            window.ProjectManager.saveSelectedProsePrompt(this, id);
         },
 
         async renameCurrentProject() {
-            if (!this.currentProject || !this.renameProjectName) return;
-            try {
-                await db.projects.update(this.currentProject.id, { name: this.renameProjectName, modified: new Date() });
-                await this.loadProjects();
-                // refresh currentProject reference
-                this.currentProject = await db.projects.get(this.currentProject.id);
-                this.showRenameProjectModal = false;
-            } catch (e) {
-                console.error('Failed to rename project:', e);
-            }
+            await window.ProjectManager.renameCurrentProject(this, this.renameProjectName);
         },
 
         // Export the current project as a ZIP file containing scenes (Markdown), metadata, and compendium
         async exportProject() {
-            if (!this.currentProject) return;
-            try {
-                if (typeof JSZip === 'undefined') {
-                    alert('ZIP export library is not loaded.');
-                    return;
-                }
-
-                const zip = new JSZip();
-                const pid = this.currentProject.id;
-
-                const meta = { project: this.currentProject, chapters: [], exportedAt: new Date().toISOString() };
-
-                const chapters = await db.chapters.where('projectId').equals(pid).sortBy('order');
-                for (const ch of chapters) {
-                    const chapterObj = { id: ch.id, title: ch.title, order: ch.order, scenes: [] };
-                    const scenes = await db.scenes.where('projectId').equals(pid).and(s => s.chapterId === ch.id).sortBy('order');
-                    for (const s of scenes) {
-                        // fetch content robustly (primary lookup, then sceneId fallback)
-                        let content = null;
-                        try { content = await db.content.get(s.id); } catch (e) { content = null; }
-                        if (!content) {
-                            try { content = await db.content.where('sceneId').equals(s.id).first(); } catch (e) { content = null; }
-                        }
-                        const text = content ? (content.text || '') : '';
-
-                        const safeTitle = (s.title || 'scene').replace(/[^a-z0-9\-_. ]/ig, '_').slice(0, 80).trim();
-                        const filename = `scenes/${String(s.order).padStart(2, '0')}-${safeTitle || s.id}.md`;
-                        chapterObj.scenes.push({ id: s.id, title: s.title, order: s.order, filename });
-                        zip.file(filename, text || '');
-                    }
-                    meta.chapters.push(chapterObj);
-                }
-
-                // include compendium and other project-level stores
-                try {
-                    const comp = await db.compendium.where('projectId').equals(pid).toArray();
-                    zip.file('compendium.json', JSON.stringify(comp || [], null, 2));
-                } catch (e) {
-                    // ignore if compendium doesn't exist
-                }
-
-                // include raw project JSON/metadata
-                zip.file('metadata.json', JSON.stringify(meta, null, 2));
-
-                const blob = await zip.generateAsync({ type: 'blob' });
-                const nameSafe = (this.currentProject.name || 'project').replace(/[^a-z0-9\-_. ]/ig, '_').slice(0, 80).trim();
-                const fname = `${nameSafe || 'writingway_project'}.zip`;
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
-                URL.revokeObjectURL(url);
-            } catch (e) {
-                console.error('Export failed:', e);
-                alert('Export failed: ' + (e && e.message ? e.message : e));
-            }
+            await window.ProjectManager.exportProject(this);
         },
 
         // Prompts management
