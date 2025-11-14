@@ -1445,227 +1445,51 @@ document.addEventListener('alpine:init', () => {
         },
 
         async createScene() {
-            if (!this.newSceneName) return;
-
-            // Ensure we have a chapter to attach to
-            if (!this.chapters || this.chapters.length === 0) {
-                const chap = {
-                    id: Date.now().toString() + '-c',
-                    projectId: this.currentProject.id,
-                    title: 'Chapter 1',
-                    order: 0,
-                    created: new Date(),
-                    modified: new Date()
-                };
-                await db.chapters.add(chap);
-                await this.loadChapters();
-            }
-
-            const targetChapter = this.currentChapter || this.chapters[0];
-
-            const scene = {
-                id: Date.now().toString(),
-                projectId: this.currentProject.id,
-                chapterId: targetChapter.id,
-                title: this.newSceneName,
-                order: (targetChapter.scenes || []).length,
-                // initialize with current POV options
-                povCharacter: this.povCharacter || '',
-                pov: this.pov || '3rd person limited',
-                tense: this.tense || 'past',
-                created: new Date(),
-                modified: new Date()
-            };
-
-            await db.scenes.add(scene);
-            await db.content.add({
-                sceneId: scene.id,
-                text: '',
-                wordCount: 0
-            });
-
-            this.showNewSceneModal = false;
-            this.newSceneName = '';
-
-            // Normalize orders and reload
-            await this.normalizeAllOrders();
-            await this.loadScene(scene.id);
+            await window.SceneManager.createScene(this, this.newSceneName);
         },
 
         openNewSceneModal() {
-            // small helper so clicks are routed through a method (easier to debug)
-            this.showNewSceneModal = true;
+            window.SceneManager.openNewSceneModal(this);
         },
 
         openNewChapterModal() {
-            // set on next tick to avoid any click-propagation immediately closing the modal
-            setTimeout(() => {
-                this.showNewChapterModal = true;
-            }, 0);
+            window.ChapterManager.openNewChapterModal(this);
         },
 
         async createChapter() {
-            if (!this.newChapterName) return;
-
-            const chapter = {
-                id: Date.now().toString(),
-                projectId: this.currentProject.id,
-                title: this.newChapterName,
-                order: this.chapters.length,
-                created: new Date(),
-                modified: new Date()
-            };
-
-            await db.chapters.add(chapter);
-            this.showNewChapterModal = false;
-            this.newChapterName = '';
-
-            // Normalize orders and reload chapters
-            await this.normalizeAllOrders();
+            await window.ChapterManager.createChapter(this, this.newChapterName);
         },
 
         async loadScene(sceneId) {
-            const scene = await db.scenes.get(sceneId);
-            // Load content for the scene, using a primary-key get() first and a
-            // fallback where('sceneId') lookup for robustness across DB variants.
-            let content = null;
-            try {
-                content = await db.content.get(sceneId);
-            } catch (e) { content = null; }
-            if (!content) {
-                try { content = await db.content.where('sceneId').equals(sceneId).first(); } catch (e) { content = null; }
-            }
-
-            this.currentScene = {
-                ...scene,
-                content: content ? content.text : ''
-            };
-
-            // Load scene-specific generation options into UI state
-            this.povCharacter = scene.povCharacter || '';
-            this.pov = scene.pov || '3rd person limited';
-            this.tense = scene.tense || 'past';
-
-            // Set currentChapter to the scene's chapter
-            if (scene && scene.chapterId) {
-                const ch = this.chapters.find(c => c.id === scene.chapterId);
-                if (ch) this.currentChapter = ch;
-            }
+            await window.SceneManager.loadScene(this, sceneId);
         },
 
         async moveSceneToChapter(sceneId, targetChapterId) {
-            if (!sceneId || !targetChapterId) return;
-
-
-            // Put the scene at the end of the target chapter
-            const targetChapter = this.chapters.find(c => c.id === targetChapterId);
-            const newOrder = (targetChapter && targetChapter.scenes) ? targetChapter.scenes.length : 0;
-            // targetChapter lookup and newOrder determined here
-
-            try {
-                const res = await db.scenes.update(sceneId, { chapterId: targetChapterId, order: newOrder, modified: new Date() });
-            } catch (e) {
-                console.error('moveSceneToChapter update failed:', e);
-            }
-
-            // Normalize orders across chapters/scenes and reload
-            await this.normalizeAllOrders();
-            await this.loadScene(sceneId);
+            await window.SceneManager.moveSceneToChapter(this, sceneId, targetChapterId);
         },
 
         async moveSceneUp(sceneId) {
-            // find scene and its chapter
-            const scene = await db.scenes.get(sceneId);
-            if (!scene) return;
-            const ch = this.chapters.find(c => c.id === scene.chapterId);
-            if (!ch || !ch.scenes) return;
-            const idx = ch.scenes.findIndex(s => s.id === sceneId);
-            if (idx <= 0) return; // already first
-
-            const prev = ch.scenes[idx - 1];
-            // swap orders
-            await db.scenes.update(sceneId, { order: prev.order });
-            await db.scenes.update(prev.id, { order: scene.order });
-            await this.normalizeAllOrders();
+            await window.SceneManager.moveSceneUp(this, sceneId);
         },
 
         async moveSceneDown(sceneId) {
-            const scene = await db.scenes.get(sceneId);
-            if (!scene) return;
-            const ch = this.chapters.find(c => c.id === scene.chapterId);
-            if (!ch || !ch.scenes) return;
-            const idx = ch.scenes.findIndex(s => s.id === sceneId);
-            if (idx === -1 || idx >= ch.scenes.length - 1) return; // already last
-
-            const next = ch.scenes[idx + 1];
-            await db.scenes.update(sceneId, { order: next.order });
-            await db.scenes.update(next.id, { order: scene.order });
-            await this.normalizeAllOrders();
+            await window.SceneManager.moveSceneDown(this, sceneId);
         },
 
         async deleteScene(sceneId) {
-            if (!confirm('Delete this scene? This cannot be undone.')) return;
-            try {
-                await db.scenes.delete(sceneId);
-                await db.content.delete(sceneId);
-                if (this.currentScene && this.currentScene.id === sceneId) this.currentScene = null;
-                await this.normalizeAllOrders();
-            } catch (e) {
-                console.error('Failed to delete scene:', e);
-            }
+            await window.SceneManager.deleteScene(this, sceneId);
         },
 
         async moveChapterUp(chapterId) {
-            const idx = this.chapters.findIndex(c => c.id === chapterId);
-            if (idx <= 0) return;
-            const cur = this.chapters[idx];
-            const prev = this.chapters[idx - 1];
-            await db.chapters.update(cur.id, { order: prev.order });
-            await db.chapters.update(prev.id, { order: cur.order });
-            await this.normalizeAllOrders();
+            await window.ChapterManager.moveChapterUp(this, chapterId);
         },
 
         async moveChapterDown(chapterId) {
-            const idx = this.chapters.findIndex(c => c.id === chapterId);
-            if (idx === -1 || idx >= this.chapters.length - 1) return;
-            const cur = this.chapters[idx];
-            const next = this.chapters[idx + 1];
-            await db.chapters.update(cur.id, { order: next.order });
-            await db.chapters.update(next.id, { order: cur.order });
-            await this.normalizeAllOrders();
+            await window.ChapterManager.moveChapterDown(this, chapterId);
         },
 
         async deleteChapter(chapterId) {
-            if (!confirm('Delete this chapter? Scenes inside will be moved to another chapter or deleted. Continue?')) return;
-            const idx = this.chapters.findIndex(c => c.id === chapterId);
-            if (idx === -1) return;
-
-            // determine move target chapter (previous or next)
-            let target = this.chapters[idx - 1] || this.chapters[idx + 1] || null;
-
-            try {
-                const scenesToHandle = (await db.scenes.where('projectId').equals(this.currentProject.id).filter(s => s.chapterId === chapterId).toArray()) || [];
-                if (target) {
-                    // move scenes to target, append at end
-                    const startOrder = (target.scenes || []).length;
-                    for (let i = 0; i < scenesToHandle.length; i++) {
-                        const s = scenesToHandle[i];
-                        await db.scenes.update(s.id, { chapterId: target.id, order: startOrder + i });
-                    }
-                } else {
-                    // no target - delete scenes
-                    for (const s of scenesToHandle) {
-                        await db.scenes.delete(s.id);
-                        await db.content.delete(s.id);
-                    }
-                }
-
-                await db.chapters.delete(chapterId);
-                if (this.currentChapter && this.currentChapter.id === chapterId) this.currentChapter = target || null;
-                await this.normalizeAllOrders();
-            } catch (e) {
-                console.error('Failed to delete chapter:', e);
-            }
+            await window.ChapterManager.deleteChapter(this, chapterId);
         },
 
         // Editor
@@ -1679,284 +1503,33 @@ document.addEventListener('alpine:init', () => {
 
         // Beat quick-search handlers: detect @tokens (compendium) and #tokens (scenes)
         async onBeatInput(e) {
-            try {
-                const ta = e.target;
-                const pos = ta.selectionStart;
-                const text = this.beatInput || '';
-
-                // Check for # (scene mentions) first
-                const lastHash = text.lastIndexOf('#', pos - 1);
-                if (lastHash !== -1 && (lastHash === 0 || /\s/.test(text.charAt(lastHash - 1)))) {
-                    const q = text.substring(lastHash + 1, pos).trim();
-                    if (q && q.length >= 1) {
-                        await this.handleSceneSearch(q);
-                        return;
-                    }
-                }
-
-                // Check for @ (compendium mentions)
-                const lastAt = text.lastIndexOf('@', pos - 1);
-                try { console.debug('[onBeatInput] caret=', pos, 'textSlice=', text.substring(Math.max(0, pos - 20), pos + 5).replace(/\n/g, '\\n')); } catch (e) { }
-                if (lastAt === -1) {
-                    this.showQuickSearch = false;
-                    this.quickSearchMatches = [];
-                    this.showSceneSearch = false;
-                    this.sceneSearchMatches = [];
-                    return;
-                }
-
-                // Ensure '@' is start of token (start of string or preceded by whitespace)
-                if (lastAt > 0 && !/\s/.test(text.charAt(lastAt - 1))) {
-                    this.showQuickSearch = false;
-                    this.quickSearchMatches = [];
-                    this.showSceneSearch = false;
-                    this.sceneSearchMatches = [];
-                    return;
-                }
-
-                const q = text.substring(lastAt + 1, pos).trim();
-                try { console.debug('[onBeatInput] lastAt=', lastAt, 'query=', q); } catch (e) { }
-                if (!q || q.length < 1) {
-                    this.showQuickSearch = false;
-                    this.quickSearchMatches = [];
-                    this.showSceneSearch = false;
-                    this.sceneSearchMatches = [];
-                    return;
-                }
-
-                // Query compendium titles that match query (case-insensitive contains)
-                const pid = this.currentProject ? this.currentProject.id : null;
-                try { console.debug('[onBeatInput] projectId=', pid); } catch (e) { }
-                if (!pid) return;
-                const all = await db.compendium.where('projectId').equals(pid).toArray();
-                const lower = q.toLowerCase();
-                const matches = (all || []).filter(it => (it.title || '').toLowerCase().includes(lower));
-                try { console.debug('[onBeatInput] matchesCount=', matches.length); } catch (e) { }
-                this.quickSearchMatches = matches.slice(0, 20);
-                this.quickSearchSelectedIndex = 0;
-                this.showQuickSearch = this.quickSearchMatches.length > 0;
-                this.showSceneSearch = false;
-            } catch (err) {
-                this.showQuickSearch = false;
-                this.quickSearchMatches = [];
-                this.showSceneSearch = false;
-                this.sceneSearchMatches = [];
-            }
+            await window.BeatMentions.onBeatInput(this, e);
         },
 
         async handleSceneSearch(query) {
-            try {
-                const pid = this.currentProject ? this.currentProject.id : null;
-                if (!pid) return;
-
-                // Get all scenes in project
-                const allScenes = await db.scenes.where('projectId').equals(pid).toArray();
-                const lower = query.toLowerCase();
-
-                // Filter by title match
-                let matches = allScenes.filter(s => (s.title || '').toLowerCase().includes(lower));
-
-                // Sort: current chapter scenes first, then others
-                const currentChapterId = this.currentChapter?.id;
-                matches.sort((a, b) => {
-                    const aIsCurrent = a.chapterId === currentChapterId;
-                    const bIsCurrent = b.chapterId === currentChapterId;
-                    if (aIsCurrent && !bIsCurrent) return -1;
-                    if (!aIsCurrent && bIsCurrent) return 1;
-                    return (a.order || 0) - (b.order || 0);
-                });
-
-                this.sceneSearchMatches = matches.slice(0, 15);
-                this.sceneSearchSelectedIndex = 0;
-                this.showSceneSearch = this.sceneSearchMatches.length > 0;
-                this.showQuickSearch = false;
-            } catch (err) {
-                console.error('Scene search error:', err);
-                this.showSceneSearch = false;
-                this.sceneSearchMatches = [];
-            }
+            await window.BeatMentions.handleSceneSearch(this, query);
         },
 
         onBeatKey(e) {
-            try {
-                const isSearching = this.showQuickSearch || this.showSceneSearch;
-                if (!isSearching) return;
-
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (this.showQuickSearch) {
-                        this.quickSearchSelectedIndex = Math.min(this.quickSearchSelectedIndex + 1, (this.quickSearchMatches.length - 1));
-                    } else if (this.showSceneSearch) {
-                        this.sceneSearchSelectedIndex = Math.min(this.sceneSearchSelectedIndex + 1, (this.sceneSearchMatches.length - 1));
-                    }
-                    return;
-                }
-                if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (this.showQuickSearch) {
-                        this.quickSearchSelectedIndex = Math.max(0, this.quickSearchSelectedIndex - 1);
-                    } else if (this.showSceneSearch) {
-                        this.sceneSearchSelectedIndex = Math.max(0, this.sceneSearchSelectedIndex - 1);
-                    }
-                    return;
-                }
-                if (e.key === 'Escape') {
-                    this.showQuickSearch = false;
-                    this.showSceneSearch = false;
-                    return;
-                }
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (this.showQuickSearch && this.quickSearchMatches && this.quickSearchMatches.length > 0) {
-                        const sel = this.quickSearchMatches[this.quickSearchSelectedIndex];
-                        this.selectQuickMatch(sel);
-                    } else if (this.showSceneSearch && this.sceneSearchMatches && this.sceneSearchMatches.length > 0) {
-                        const sel = this.sceneSearchMatches[this.sceneSearchSelectedIndex];
-                        this.selectSceneMatch(sel);
-                    }
-                }
-            } catch (err) { /* ignore */ }
+            window.BeatMentions.onBeatKey(this, e);
         },
 
         selectQuickMatch(item) {
-            try {
-                if (!item || !item.id) return;
-                // Replace the last @token before caret with @[Title] format
-                const ta = document.querySelector('.beat-input');
-                if (!ta) return;
-                const pos = ta.selectionStart;
-                const text = this.beatInput || '';
-                const lastAt = text.lastIndexOf('@', pos - 1);
-                if (lastAt === -1) return;
-                const before = text.substring(0, lastAt);
-                const after = text.substring(pos);
-                // Insert clean mention format: @[Title] with trailing space
-                const insert = `@[${item.title}] `;
-                this.beatInput = before + insert + after;
-                // Store mapping of title to ID for later resolution
-                this.beatCompendiumMap[item.title] = item.id;
-                // remember inserted compendium id for this scene (avoid duplicates)
-                if (!this.quickInsertedCompendium.includes(item.id)) this.quickInsertedCompendium.push(item.id);
-                // hide suggestions
-                this.showQuickSearch = false;
-                this.quickSearchMatches = [];
-                this.$nextTick(() => {
-                    try { ta.focus(); ta.selectionStart = ta.selectionEnd = (before + insert).length; } catch (e) { }
-                });
-            } catch (e) { console.error('selectQuickMatch error', e); }
+            window.BeatMentions.selectQuickMatch(this, item);
         },
 
         selectSceneMatch(scene) {
-            try {
-                if (!scene || !scene.id) return;
-
-                // Check if scene has a valid summary
-                const hasSummary = scene.summary && scene.summary.length > 0;
-                const isStale = scene.summaryStale === true;
-
-                // Validate summary status
-                if (!hasSummary) {
-                    alert(`⚠️ Scene "${scene.title}" has no summary.\n\nPlease create a summary first by:\n1. Opening the scene's menu (...)\n2. Selecting "Summary"\n3. Clicking "Summarize" then "Save"`);
-                    this.showSceneSearch = false;
-                    return;
-                }
-
-                if (isStale) {
-                    const proceed = confirm(`⚠️ Scene "${scene.title}" has an outdated summary.\n\nThe summary may not reflect recent changes.\n\nDo you want to use it anyway?\n\n(Tip: Update the summary first for better results)`);
-                    if (!proceed) {
-                        this.showSceneSearch = false;
-                        return;
-                    }
-                }
-
-                // Replace the last #token before caret with #[Title] format
-                const ta = document.querySelector('.beat-input');
-                if (!ta) return;
-                const pos = ta.selectionStart;
-                const text = this.beatInput || '';
-                const lastHash = text.lastIndexOf('#', pos - 1);
-                if (lastHash === -1) return;
-                const before = text.substring(0, lastHash);
-                const after = text.substring(pos);
-                // Insert clean mention format: #[Title] with trailing space
-                const insert = `#[${scene.title}] `;
-                this.beatInput = before + insert + after;
-                // Store mapping of title to ID for later resolution
-                this.beatSceneMap[scene.title] = scene.id;
-                // remember inserted scene id for this beat (avoid duplicates)
-                if (!this.quickInsertedScenes.includes(scene.id)) this.quickInsertedScenes.push(scene.id);
-                // hide suggestions
-                this.showSceneSearch = false;
-                this.sceneSearchMatches = [];
-                this.$nextTick(() => {
-                    try { ta.focus(); ta.selectionStart = ta.selectionEnd = (before + insert).length; } catch (e) { }
-                });
-            } catch (e) { console.error('selectSceneMatch error', e); }
+            window.BeatMentions.selectSceneMatch(this, scene);
         },
 
         // Parse beatInput for @[Title] mentions and return resolved compendium rows
         async resolveCompendiumEntriesFromBeat(beatText) {
-            try {
-                if (!beatText) return [];
-                const ids = new Set();
-
-                // Parse @[Title] mentions and look up IDs from our mapping
-                const reMention = /@\[([^\]]+)\]/g;
-                let m;
-                while ((m = reMention.exec(beatText)) !== null) {
-                    const title = m[1];
-                    if (this.beatCompendiumMap[title]) {
-                        ids.add(this.beatCompendiumMap[title]);
-                    }
-                }
-
-                // Also support legacy formats for backward compatibility
-                const reLegacy = /\[\[comp:([^\]]+)\]\]/g;
-                while ((m = reLegacy.exec(beatText)) !== null) {
-                    if (m[1]) ids.add(m[1]);
-                }
-
-                const out = [];
-                for (const id of ids) {
-                    try {
-                        const row = await db.compendium.get(id);
-                        if (row) out.push(row);
-                    } catch (e) { /* ignore */ }
-                }
-                return out;
-            } catch (e) { return []; }
+            return await window.BeatMentions.resolveCompendiumEntriesFromBeat(this, beatText);
         },
 
         // Parse beatInput for #[Title] mentions and return resolved scene summaries
         async resolveSceneSummariesFromBeat(beatText) {
-            try {
-                if (!beatText) return [];
-                const ids = new Set();
-
-                // Parse #[Title] mentions and look up IDs from our mapping
-                const reMention = /#\[([^\]]+)\]/g;
-                let m;
-                while ((m = reMention.exec(beatText)) !== null) {
-                    const title = m[1];
-                    if (this.beatSceneMap[title]) {
-                        ids.add(this.beatSceneMap[title]);
-                    }
-                }
-
-                const out = [];
-                for (const id of ids) {
-                    try {
-                        const scene = await db.scenes.get(id);
-                        if (scene && scene.summary) {
-                            out.push({
-                                title: scene.title,
-                                summary: scene.summary
-                            });
-                        }
-                    } catch (e) { /* ignore */ }
-                }
-                return out;
-            } catch (e) { return []; }
+            return await window.BeatMentions.resolveSceneSummariesFromBeat(this, beatText);
         },
 
 
