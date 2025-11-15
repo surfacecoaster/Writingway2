@@ -243,6 +243,10 @@
          * Export the current project as a ZIP file containing scenes (Markdown), metadata, and compendium
          * @param {Object} app - Alpine app instance
          */
+        /**
+         * Export current project as a ZIP file
+         * @param {Object} app - Alpine app instance
+         */
         async exportProject(app) {
             if (!app.currentProject) return;
             try {
@@ -267,12 +271,13 @@
                         if (!content) {
                             try { content = await db.content.where('sceneId').equals(s.id).first(); } catch (e) { content = null; }
                         }
-                        const text = content ? (content.text || '') : '';
+                        const htmlText = content ? (content.text || '') : '';
 
+                        // Export as HTML to preserve formatting
                         const safeTitle = (s.title || 'scene').replace(/[^a-z0-9\-_. ]/ig, '_').slice(0, 80).trim();
-                        const filename = `scenes/${String(s.order).padStart(2, '0')}-${safeTitle || s.id}.md`;
+                        const filename = `scenes/${String(s.order).padStart(2, '0')}-${safeTitle || s.id}.html`;
                         chapterObj.scenes.push({ id: s.id, title: s.title, order: s.order, filename });
-                        zip.file(filename, text || '');
+                        zip.file(filename, htmlText || '');
                     }
                     meta.chapters.push(chapterObj);
                 }
