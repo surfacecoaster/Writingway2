@@ -101,10 +101,18 @@
         let messages = null;
 
         if (typeof prompt === 'object' && prompt.messages) {
+            // buildPrompt() result with messages and asString()
             messages = prompt.messages;
             if (aiMode === 'local') {
                 // Use string format for local server
                 promptStr = prompt.asString();
+            }
+        } else if (Array.isArray(prompt)) {
+            // Raw messages array (e.g., from workshop chat)
+            messages = prompt;
+            if (aiMode === 'local') {
+                // Convert messages array to ChatML format for local server
+                promptStr = messagesToChatML(messages);
             }
         }
 
@@ -115,6 +123,23 @@
             // Local Mode - use llama-server with string prompt
             return await streamGenerationLocal(promptStr, onToken, aiEndpoint, temperature, maxTokens);
         }
+    }
+
+    /**
+     * Convert messages array to ChatML format string
+     * @param {Array} messages - Array of {role, content} objects
+     * @returns {string} - Formatted ChatML string
+     */
+    function messagesToChatML(messages) {
+        if (!Array.isArray(messages)) return '';
+
+        let result = '';
+        for (const msg of messages) {
+            result += `<|im_start|>${msg.role}\n${msg.content}<|im_end|>\n`;
+        }
+        // Add assistant start tag for completion
+        result += '<|im_start|>assistant\n';
+        return result;
     }
 
     async function streamGenerationLocal(prompt, onToken, endpoint, temperature, maxTokens) {

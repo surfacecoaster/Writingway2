@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 title Writingway 2.0
 color 0A
 
@@ -24,18 +25,44 @@ if not exist "llama-server.exe" (
     exit /b 1
 )
 
-REM Check if model exists
-if not exist "models\Qwen3-4B-Instruct-2507-IQ4_XS.gguf" (
-    echo [!] Model file not found!
-    echo.
-    echo Expected location: %CD%\models\Qwen3-4B-Instruct-2507-IQ4_XS.gguf
-    echo.
-    pause
-    exit /b 1
+REM Check if models folder exists (but don't require a specific model)
+if not exist "models" mkdir models
+
+REM Check for any .gguf model files - try to find first one
+set "MODEL_FOUND=0"
+set "MODEL_PATH="
+for /f "delims=" %%f in ('dir /b models\*.gguf 2^>nul') do (
+    set "MODEL_FOUND=1"
+    set "MODEL_PATH=models\%%f"
+    goto model_check_done
 )
 
-echo [OK] llama-server.exe found
-echo [OK] Model file found
+:model_check_done
+if "!MODEL_FOUND!"=="1" (
+    echo [OK] Model file found: !MODEL_PATH!
+    echo [OK] llama-server.exe found
+    goto check_python
+)
+
+echo [*] No .gguf files found in models folder
+echo [!] No model files found in models\ folder
+echo.
+echo You can either:
+echo 1. Download a model and place it in the models\ folder
+echo 2. Start anyway and configure API mode ^(Claude, OpenRouter, etc.^)
+echo.
+echo Recommended models:
+echo  - Qwen2.5-3B-Instruct (2.5GB, fast)
+echo  - Qwen2.5-7B-Instruct (5GB, better quality)
+echo  - Download from: https://huggingface.co/models?search=gguf
+echo.
+choice /C YN /M "Start without local model"
+if errorlevel 2 exit /b 1
+echo.
+echo [*] Starting without local AI - you can use API mode
+goto skip_model_server
+
+:check_python
 echo.
 
 REM Check if Python is installed
@@ -52,13 +79,23 @@ if %errorlevel% neq 0 (
 
 echo [OK] Python found
 echo.
+
+REM If we have a model, start the AI server
+if !MODEL_FOUND!==0 (
+    echo [*] No model found - skipping AI server
+    goto skip_model_server
+)
+
 echo ================================
 echo   Starting AI Model Server...
 echo ================================
 echo.
 
+echo [*] Using model: !MODEL_PATH!
+echo.
+
 REM Start llama.cpp server in background (keep window open with /k)
-start "Writingway AI Server" cmd /k "llama-server.exe -m models\Qwen3-4B-Instruct-2507-IQ4_XS.gguf -c 4096 -ngl 999 --port 8080 --host 127.0.0.1"
+start "Writingway AI Server" cmd /k "llama-server.exe -m "!MODEL_PATH!" -c 4096 -ngl 999 --port 8080 --host 127.0.0.1"
 
 echo [*] AI server starting on port 8080...
 echo [*] Waiting for AI server to initialize...
@@ -85,6 +122,7 @@ echo [!] AI server took too long to start
 echo [*] Continuing anyway - you can reload the page once server is ready
 echo.
 
+:skip_model_server
 :start_web
 echo.
 echo ================================

@@ -662,7 +662,7 @@
                                                 </template>
                                                 <!-- Fallback when no local models -->
                                                 <option x-show="aiMode === 'local' && availableLocalModels.length === 0"
-                                                    value="">No models - Scan in AI Settings</option>
+                                                    value="">Local model (via llama-server)</option>
                                             </select>
                                         </label>
 
@@ -1094,32 +1094,25 @@
                     <button class="btn btn-secondary" @click="scanLocalModels()" style="margin-bottom:16px;">🔍 Scan for
                         Models</button>
 
-                    <div style="margin-bottom:16px;" x-show="availableLocalModels.length > 0">
+                    <div style="margin-bottom:16px;">
                         <label
-                            style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">Select
-                            Model</label>
-                        <select x-model="aiModel"
-                            style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:6px;">
-                            <option value="">Choose a model...</option>
-                            <template x-for="model in availableLocalModels" :key="model">
-                                <option :value="model" x-text="model"></option>
-                            </template>
-                        </select>
+                            style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">Local
+                            Model Status</label>
+                        <div
+                            style="padding:12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;">
+                            <p style="font-size:12px;color:var(--text-secondary);margin:0;">
+                                ✓ Model loaded by llama-server (started via start.bat)<br>
+                                <span style="font-size:11px;opacity:0.8;">The actual model file is whichever .gguf file
+                                    start.bat found in your /models folder</span>
+                            </p>
+                        </div>
                     </div>
 
-                    <div x-show="availableLocalModels.length === 0"
-                        style="padding:12px;background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);border-radius:6px;">
-                        <p style="font-size:12px;color:var(--text-secondary);margin:0;">⚠️ No models found. Please add
-                            GGUF files to the /models folder, then restart using start.bat</p>
-                    </div>
-
-                    <div x-show="availableLocalModels.length > 0"
+                    <div
                         style="margin-top:12px;padding:10px;background:rgba(33,150,243,0.1);border:1px solid rgba(33,150,243,0.3);border-radius:6px;">
                         <p style="font-size:11px;color:var(--text-secondary);margin:0;line-height:1.5;">
-                            💡 <strong>Note:</strong> Changing models requires restarting Writingway via <code
-                                style="background:rgba(0,0,0,0.2);padding:2px 4px;border-radius:3px;">start.bat</code>
-                            <br>• GPU-enabled llama.cpp loads models in ~3 seconds
-                            <br>• CPU-only version can take several minutes
+                            💡 <strong>Note:</strong> To change models, close Writingway, replace the .gguf file in
+                            /models folder, and run start.bat again
                         </p>
                     </div>
 
@@ -1596,7 +1589,8 @@
                             <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;">
                                 <h3 style="margin:0;font-size:18px;">Workshop Chat</h3>
                                 <select x-model="aiModel" @change="saveGenerationParams()" class="workshop-select"
-                                    title="AI Model for this chat">
+                                    title="AI Model for this chat"
+                                    x-show="aiMode === 'api' || availableLocalModels.length > 0">
                                     <template
                                         x-for="model in (aiMode === 'api' ? (providerModels[aiProvider] || []) : [])"
                                         :key="model.id">
@@ -1607,9 +1601,11 @@
                                         :key="modelName">
                                         <option :value="modelName" x-text="modelName"></option>
                                     </template>
-                                    <option x-show="aiMode === 'local' && availableLocalModels.length === 0" value="">No
-                                        models</option>
                                 </select>
+                                <span x-show="aiMode === 'local' && availableLocalModels.length === 0"
+                                    style="padding:4px 12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;font-size:12px;">
+                                    ✓ Local Model Active
+                                </span>
                                 <select x-model="selectedWorkshopPromptId" @change="saveSelectedWorkshopPrompt"
                                     class="workshop-select">
                                     <option value="">Default Workshop Prompt</option>
@@ -1691,7 +1687,8 @@
                                             style="padding:8px;cursor:pointer;font-size:13px;">
                                             <div style="font-weight:600;" x-text="item.title"></div>
                                             <div style="font-size:11px;color:var(--text-secondary);"
-                                                x-text="item.category"></div>
+                                                x-text="item.category">
+                                            </div>
                                         </div>
                                     </template>
                                 </div>

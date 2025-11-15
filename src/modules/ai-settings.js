@@ -83,12 +83,18 @@
          */
         async scanLocalModels(app) {
             try {
-                // In a real file system environment, we'd scan the models folder
-                // For now, try to list what we can detect
-                app.availableLocalModels = ['Qwen3-4B-Instruct-2507-IQ4_XS.gguf'];
-                alert('Model scan complete! Found ' + app.availableLocalModels.length + ' model(s).\n\n' +
-                    '⚠️ Important: After selecting a model, you must restart Writingway using start.bat for the new model to load.\n\n' +
-                    'Tip: Make sure you downloaded the CUDA-enabled llama.cpp for GPU acceleration (loads in 2-3 seconds vs minutes on CPU).');
+                // Note: Browser can't actually scan filesystem
+                // The model name here is just for display - the actual model is whatever
+                // llama-server.exe loaded from the models folder when you ran start.bat
+                alert('ℹ️ Local Model Info:\n\n' +
+                    'The browser cannot scan your models folder directly.\n\n' +
+                    'The model shown here is just for display.\n\n' +
+                    '✓ Your ACTUAL model is whatever start.bat loaded into llama-server\n' +
+                    '✓ Connection URL: http://localhost:8080\n\n' +
+                    'To change models:\n' +
+                    '1. Close all Writingway windows\n' +
+                    '2. Put a different .gguf file in the models folder\n' +
+                    '3. Run start.bat again (it will use the first .gguf file it finds)');
             } catch (e) {
                 console.error('Failed to scan models:', e);
                 alert('Could not scan models folder');
