@@ -323,6 +323,9 @@
                                                 <button
                                                     @click.stop="chapter.expanded = !chapter.expanded; openMenu=false"
                                                     x-text="chapter.expanded ? 'Collapse' : 'Expand'"></button>
+                                                <button
+                                                    @click.stop="openRenameChapterModal(chapter.id); openMenu=false">Rename
+                                                    chapter</button>
                                                 <button @click.stop="moveChapterUp(chapter.id); openMenu=false">Move
                                                     chapter up</button>
                                                 <button @click.stop="moveChapterDown(chapter.id); openMenu=false">Move
@@ -393,6 +396,9 @@
                                                         up</button>
                                                     <button @click.stop="moveSceneDown(scene.id); openMenu=false">Move
                                                         down</button>
+                                                    <button
+                                                        @click.stop="openRenameSceneModal(scene.id); openMenu=false">Rename
+                                                        scene</button>
                                                     <button
                                                         @click.stop="openSceneSummary(scene.id); openMenu=false">Summary</button>
                                                     <button @click.stop="deleteScene(scene.id); openMenu=false">Delete
@@ -1537,6 +1543,35 @@
                     <div class="modal-buttons">
                         <button class="btn btn-secondary" @click="showNewChapterModal = false">Cancel</button>
                         <button class="btn btn-primary" @click="createChapter">Create</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Rename Chapter Modal -->
+        <template x-if="showRenameChapterModal">
+            <div class="modal-overlay" @click.self="showRenameChapterModal = false">
+                <div class="modal">
+                    <h3>Rename Chapter</h3>
+                    <input type="text" x-model="renameChapterName" placeholder="Chapter name"
+                        @keydown.enter="renameChapter">
+                    <div class="modal-buttons">
+                        <button class="btn btn-secondary" @click="showRenameChapterModal = false">Cancel</button>
+                        <button class="btn btn-primary" @click="renameChapter">Rename</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Rename Scene Modal -->
+        <template x-if="showRenameSceneModal">
+            <div class="modal-overlay" @click.self="showRenameSceneModal = false">
+                <div class="modal">
+                    <h3>Rename Scene</h3>
+                    <input type="text" x-model="renameSceneName" placeholder="Scene name" @keydown.enter="renameScene">
+                    <div class="modal-buttons">
+                        <button class="btn btn-secondary" @click="showRenameSceneModal = false">Cancel</button>
+                        <button class="btn btn-primary" @click="renameScene">Rename</button>
                     </div>
                 </div>
             </div>

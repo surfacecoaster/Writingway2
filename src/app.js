@@ -336,9 +336,15 @@ document.addEventListener('alpine:init', () => {
         showNewProjectModal: false,
         showNewSceneModal: false,
         showNewChapterModal: false,
+        showRenameChapterModal: false,
+        showRenameSceneModal: false,
         newChapterName: '',
         newProjectName: '',
         newSceneName: '',
+        renameChapterId: null,
+        renameChapterName: '',
+        renameSceneId: null,
+        renameSceneName: '',
 
         // Scene generation options
         showSceneOptions: false,
@@ -1769,6 +1775,58 @@ document.addEventListener('alpine:init', () => {
 
         async deleteChapter(chapterId) {
             await window.ChapterManager.deleteChapter(this, chapterId);
+        },
+
+        openRenameChapterModal(chapterId) {
+            const chapter = this.chapters.find(c => c.id === chapterId);
+            if (chapter) {
+                this.renameChapterId = chapterId;
+                this.renameChapterName = chapter.title;
+                this.showRenameChapterModal = true;
+            }
+        },
+
+        async renameChapter() {
+            if (!this.renameChapterId || !this.renameChapterName.trim()) return;
+            try {
+                await db.chapters.update(this.renameChapterId, {
+                    title: this.renameChapterName.trim(),
+                    modified: new Date()
+                });
+                await this.loadChapters();
+                this.showRenameChapterModal = false;
+                this.renameChapterId = null;
+                this.renameChapterName = '';
+            } catch (e) {
+                console.error('Failed to rename chapter:', e);
+                alert('Failed to rename chapter');
+            }
+        },
+
+        openRenameSceneModal(sceneId) {
+            const scene = this.scenes.find(s => s.id === sceneId);
+            if (scene) {
+                this.renameSceneId = sceneId;
+                this.renameSceneName = scene.title;
+                this.showRenameSceneModal = true;
+            }
+        },
+
+        async renameScene() {
+            if (!this.renameSceneId || !this.renameSceneName.trim()) return;
+            try {
+                await db.scenes.update(this.renameSceneId, {
+                    title: this.renameSceneName.trim(),
+                    modified: new Date()
+                });
+                await this.loadChapters();
+                this.showRenameSceneModal = false;
+                this.renameSceneId = null;
+                this.renameSceneName = '';
+            } catch (e) {
+                console.error('Failed to rename scene:', e);
+                alert('Failed to rename scene');
+            }
         },
 
         // Editor
