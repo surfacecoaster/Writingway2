@@ -439,6 +439,14 @@
                             ✎ Text Formatting
                         </button>
 
+                        <!-- Preview Toggle Button -->
+                        <button @click="showMarkdownPreview = !showMarkdownPreview" class="btn btn-secondary"
+                            :class="{ 'btn-primary': showMarkdownPreview }"
+                            :title="showMarkdownPreview ? 'Switch to edit mode' : 'Preview formatted text'">
+                            <span x-show="!showMarkdownPreview">👁️ Preview</span>
+                            <span x-show="showMarkdownPreview">✏️ Edit</span>
+                        </button>
+
                         <!-- TTS Read Aloud Button -->
                         <button @click="toggleTTS()" class="btn btn-secondary" :class="{ 'btn-primary': isReading }"
                             :title="isReading ? 'Stop reading' : 'Read scene aloud'">
@@ -475,9 +483,19 @@
 
                     <div class="editor-main">
                         <template x-if="currentScene">
-                            <textarea class="editor-textarea" @input="onEditorChange" @paste="handlePaste"
-                                x-model="currentScene.content" style="outline:none;direction:ltr;resize:none;" dir="ltr"
-                                placeholder="Start writing your scene here..."></textarea>
+                            <div style="position:relative;height:100%;display:flex;flex-direction:column;">
+                                <!-- Edit Mode: Textarea -->
+                                <textarea x-show="!showMarkdownPreview" class="editor-textarea" @input="onEditorChange"
+                                    @paste="handlePaste" x-model="currentScene.content"
+                                    style="outline:none;direction:ltr;resize:none;" dir="ltr"
+                                    placeholder="Start writing your scene here..."></textarea>
+
+                                <!-- Preview Mode: Rendered HTML -->
+                                <div x-show="showMarkdownPreview" class="editor-preview"
+                                    x-html="markdownToHtml(currentScene.content)"
+                                    style="flex:1;padding:50px 60px;background:var(--bg-primary);overflow-y:auto;direction:ltr;font-family:'Georgia',serif;font-size:17px;line-height:2.0;color:#e8e8e8;">
+                                </div>
+                            </div>
                         </template> <template x-if="!currentScene">
                             <div class="welcome-screen">
                                 <div class="welcome-content">

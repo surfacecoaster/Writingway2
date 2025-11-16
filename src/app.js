@@ -258,6 +258,9 @@ document.addEventListener('alpine:init', () => {
         ttsSpeed: 1.0, // Speech rate (0.5 - 2.0)
         availableTTSVoices: [], // Populated on init
 
+        // Markdown preview state
+        showMarkdownPreview: false,
+
         // App initialization state
         appReady: false,
         initProgress: 0,
@@ -1738,7 +1741,35 @@ document.addEventListener('alpine:init', () => {
             // Default paste behavior is fine for textarea
         },
 
-        // Apply Markdown formatting to selected text in textarea
+        // Convert Markdown to HTML for preview
+        markdownToHtml(text) {
+            if (!text) return '';
+
+            let html = text
+                // Headers (must be processed before paragraphs)
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                // Blockquotes (must be before paragraphs)
+                .replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
+                // Bold (process before paragraphs)
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                // Italic (process before paragraphs)
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                // Strikethrough (process before paragraphs)
+                .replace(/~~(.+?)~~/g, '<del>$1</del>')
+                // Convert double line breaks to paragraph breaks
+                .replace(/\n\n+/g, '</p><p>')
+                // Convert single line breaks to <br>
+                .replace(/\n/g, '<br>');
+
+            // Wrap in paragraphs if not already wrapped in block elements
+            if (!html.startsWith('<h') && !html.startsWith('<blockquote>')) {
+                html = `<p>${html}</p>`;
+            }
+
+            return html;
+        },        // Apply Markdown formatting to selected text in textarea
         applyFormatting(format) {
             const editor = document.querySelector('.editor-textarea');
             if (!editor || !this.currentScene) return;

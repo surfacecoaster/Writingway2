@@ -31,6 +31,8 @@
 
                 // Extract project name from structure file name
                 const projectName = structureFile.split('/').pop().replace('_structure.json', '');
+                console.log('📁 Importing project:', projectName);
+                console.log('📄 Structure file:', structureFile);
 
                 // Read structure file
                 const structureData = JSON.parse(await this.readFileAsText(fileMap[structureFile]));
@@ -54,6 +56,7 @@
 
                 // Import structure (flatten acts into chapters)
                 let chapterOrder = 0;
+                let totalScenes = 0;
                 const chapterMap = {}; // Track chapter IDs for scenes
 
                 for (const act of (structureData.acts || [])) {
@@ -89,6 +92,7 @@
                                 sceneOrder
                             );
                             sceneOrder++;
+                            totalScenes++;
                         }
 
                         chapterOrder++;
@@ -105,7 +109,7 @@
                 app.showW1ImportModal = false;
                 app.w1ImportInProgress = false;
 
-                alert(`✓ Successfully imported "${projectName}"!\n\n${chapterOrder} chapters imported.`);
+                alert(`✓ Successfully imported "${projectName}"!\n\n${chapterOrder} chapters and ${totalScenes} scenes imported.\n\nCheck console for details if scenes have no content.`);
 
                 // Open the imported project
                 await app.openProject(projectId);
@@ -148,8 +152,9 @@
             });
 
             let sceneContent = '';
+            let sceneFoundStatus = '';
             if (sceneFiles.length > 0) {
-                console.log('Using latest file:', sceneFiles[0]);
+                console.log('✓ Using latest file:', sceneFiles[0]);
                 const latestFile = fileMap[sceneFiles[0]];
                 const rawContent = await this.readFileAsText(latestFile);
 
@@ -167,12 +172,16 @@
                 }
 
                 console.log('Converted content length:', sceneContent.length);
+                sceneFoundStatus = 'content loaded';
             } else {
-                console.warn('No scene files found for pattern:', scenePattern);
+                console.warn('✗ No scene files found for pattern:', scenePattern);
+                console.warn('Available scene files in directory:', Object.keys(fileMap).filter(p => p.endsWith('.html') || p.endsWith('.txt')).map(p => p.split('/').pop()));
+                sceneFoundStatus = 'NO CONTENT - file not found';
             }
 
             // Create scene
             const sceneId = Date.now().toString() + '-s' + sceneOrder + '-' + Math.random().toString(36).slice(2, 6);
+            console.log(`Creating scene: "${scene.name}" (${sceneFoundStatus})`);
             await db.scenes.add({
                 id: sceneId,
                 projectId: projectId,
