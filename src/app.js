@@ -331,6 +331,7 @@ document.addEventListener('alpine:init', () => {
         lastGenStart: null,
         lastGenText: '',
         showGenActions: false,
+        showGeneratedHighlight: false,
         lastBeat: '',
         saveTimeout: null,
         showNewProjectModal: false,
@@ -2222,6 +2223,7 @@ document.addEventListener('alpine:init', () => {
         async acceptGeneration() {
             // Accept — nothing to change, just hide actions and clear buffers
             this.showGenActions = false;
+            this.showGeneratedHighlight = false;
             this.lastGenStart = null;
             this.lastGenText = '';
             this.lastBeat = '';
@@ -2237,6 +2239,7 @@ document.addEventListener('alpine:init', () => {
             const newContent = content.slice(0, this.lastGenStart);
             this.currentScene.content = newContent;
             this.showGenActions = false;
+            this.showGeneratedHighlight = false;
             // save removal
             await this.saveScene();
 
@@ -2255,6 +2258,7 @@ document.addEventListener('alpine:init', () => {
             const newContent = content.slice(0, this.lastGenStart);
             this.currentScene.content = newContent;
             this.showGenActions = false;
+            this.showGeneratedHighlight = false;
             this.lastGenStart = null;
             this.lastGenText = '';
             this.lastBeat = '';
@@ -2395,6 +2399,7 @@ document.addEventListener('alpine:init', () => {
 
                 // Generation complete — expose accept/retry/discard actions
                 this.showGenActions = true;
+                this.showGeneratedHighlight = true;
 
                 // Select the newly generated text in the textarea
                 this.$nextTick(() => {
@@ -2412,6 +2417,11 @@ document.addEventListener('alpine:init', () => {
                             ta.scrollTop = Math.max(0, Math.floor(start / 80) * lineHeight);
                         }
                     } catch (e) { }
+
+                    // Auto-hide highlight after 5 seconds
+                    setTimeout(() => {
+                        this.showGeneratedHighlight = false;
+                    }, 5000);
                 });
 
                 // Clear beat input (we keep lastBeat so retry can reuse it)

@@ -814,6 +814,32 @@ body {
     color: var(--text-secondary);
 }
 
+/* Highlight newly generated text */
+.editor-textarea.has-generated-text::selection {
+    background: rgba(74, 158, 255, 0.4);
+}
+
+.editor-textarea.has-generated-text {
+    background: linear-gradient(to bottom,
+            var(--bg-primary) 0%,
+            var(--bg-primary) 50%,
+            rgba(74, 158, 255, 0.08) 50%,
+            rgba(74, 158, 255, 0.08) 100%);
+    background-size: 100% 200%;
+    background-position: 0% 0%;
+    animation: highlightFade 5s ease-out forwards;
+}
+
+@keyframes highlightFade {
+    0% {
+        background-position: 0% 100%;
+    }
+
+    100% {
+        background-position: 0% 0%;
+    }
+}
+
 /* Markdown Preview Styles */
 .editor-preview h1 {
     font-size: 32px;
