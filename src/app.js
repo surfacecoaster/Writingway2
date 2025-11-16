@@ -399,6 +399,17 @@ document.addEventListener('alpine:init', () => {
         fetchingModels: false, // Loading state for model fetching
         modelsFetched: false, // Whether we've already fetched models for current provider
 
+        // GitHub Backup State
+        githubToken: '',
+        githubUsername: '',
+        backupEnabled: false,
+        lastBackupTime: null,
+        backupStatus: '',
+        showBackupSettings: false,
+        showRestoreModal: false,
+        backupList: [],
+        currentProjectGistId: '',
+
         // Generation Parameters
         temperature: 0.8,
         maxTokens: 300,
@@ -743,6 +754,15 @@ document.addEventListener('alpine:init', () => {
                     e.target.style.unicodeBidi = 'normal';
                 }
             }, true);
+
+            // Load GitHub backup settings (with error handling to not block initialization)
+            try {
+                if (window.GitHubBackup && typeof window.GitHubBackup.loadBackupSettings === 'function') {
+                    window.GitHubBackup.loadBackupSettings(this);
+                }
+            } catch (e) {
+                console.error('Failed to load backup settings:', e);
+            }
 
             // Final step: hide loading screen
             this.updateLoadingScreen(100, 'Ready!', 'Welcome to Writingway');
@@ -2459,6 +2479,112 @@ document.addEventListener('alpine:init', () => {
                 }
             }
             await this.loadChapters();
+        },
+
+        // ========== GitHub Backup Methods ==========
+
+        async openBackupSettings() {
+            this.showBackupSettings = true;
+        },
+
+        async closeBackupSettings() {
+            this.showBackupSettings = false;
+        },
+
+        async saveBackupSettings() {
+            // Validate token first
+            if (this.githubToken) {
+                this.backupStatus = 'Validating token...';
+                const result = await window.GitHubBackup.validateToken(this.githubToken);
+
+                if (!result.valid) {
+                    alert('Invalid GitHub token: ' + result.error);
+                    this.backupStatus = 'Token invalid';
+                    return;
+                }
+
+                this.githubUsername = result.username;
+            }
+
+            // Save settings
+            window.GitHubBackup.saveBackupSettings(this);
+
+            // Start or stop auto-backup based on enabled state
+            if (this.backupEnabled && this.githubToken) {
+                window.GitHubBackup.startAutoBackup(this);
+                this.backupStatus = 'Auto-backup enabled';
+            } else {
+                window.GitHubBackup.stopAutoBackup();
+                this.backupStatus = 'Auto-backup disabled';
+            }
+
+            this.showBackupSettings = false;
+        },
+
+        async backupNow() {
+            if (!this.githubToken || !this.currentProject) {
+                alert('Please configure GitHub token and select a project first.');
+                return;
+            }
+
+            this.backupStatus = 'Backing up...';
+            const result = await window.GitHubBackup.backupToGist(this);
+
+            if (result.success) {
+                this.lastBackupTime = new Date();
+                this.backupStatus = 'Backed up';
+                if (result.gistId) {
+                    this.currentProjectGistId = result.gistId;
+                    window.GitHubBackup.saveBackupSettings(this);
+                }
+                alert('Backup successful!');
+            } else {
+                this.backupStatus = 'Backup failed';
+                alert('Backup failed: ' + result.error);
+            }
+        },
+
+        async openRestoreModal() {
+            if (!this.githubToken || !this.currentProjectGistId) {
+                alert('No backup configured for this project.');
+                return;
+            }
+
+            this.backupStatus = 'Loading backups...';
+            const result = await window.GitHubBackup.listBackups(this);
+
+            if (result.success) {
+                this.backupList = result.backups;
+                this.showRestoreModal = true;
+                this.backupStatus = '';
+            } else {
+                alert('Failed to load backups: ' + result.error);
+                this.backupStatus = 'Failed to load';
+            }
+        },
+
+        async closeRestoreModal() {
+            this.showRestoreModal = false;
+            this.backupList = [];
+        },
+
+        async restoreBackup(versionUrl) {
+            if (!confirm('This will replace your current project with the backup. Continue?')) {
+                return;
+            }
+
+            this.backupStatus = 'Restoring...';
+            const result = await window.GitHubBackup.restoreFromBackup(this, versionUrl);
+
+            if (result.success) {
+                this.backupStatus = 'Restored';
+                alert('Backup restored successfully!');
+                this.showRestoreModal = false;
+                this.backupList = [];
+            } else {
+                this.backupStatus = 'Restore failed';
+                alert('Restore failed: ' + result.error);
+            }
         }
     }));
 });

@@ -18,6 +18,7 @@
     <script defer src="src/modules/beat-mentions.js"></script>
     <script defer src="src/modules/compendium-manager.js"></script>
     <script defer src="src/modules/ai-settings.js"></script>
+    <script defer src="src/modules/github-backup.js"></script>
     <script defer src="src/workshop.js"></script>
     <script defer src="src/update-checker.js"></script>
     <script defer src="src/tts.js"></script>
@@ -224,6 +225,7 @@
                                 <button @click.stop="showAISettings = true; mainMenuOpen=false">⚙️ AI Settings</button>
                                 <button @click.stop="showPromptsPanel = true; mainMenuOpen=false">📝 Manage
                                     Prompts</button>
+                                <button @click.stop="openBackupSettings(); mainMenuOpen=false">☁️ Cloud Backup</button>
                                 <div style="border-top:1px solid var(--border);margin:6px 0"></div>
                                 <button @click.stop="checkForUpdates(); mainMenuOpen=false"
                                     :disabled="checkingForUpdates">
@@ -249,6 +251,15 @@
                             <div class="status-dot" :class="aiStatus"></div>
                             <span x-text="aiStatusText"></span>
                             <span style="margin-left:8px;opacity:0.5;font-size:12px;">▼</span>
+                        </div>
+
+                        <!-- Backup Status -->
+                        <div x-show="backupEnabled" class="ai-status-item"
+                            style="cursor:pointer;padding:8px 16px;border-radius:8px;transition:background 0.2s;font-size:12px;"
+                            @click="openBackupSettings()" @mouseenter="$el.style.background='rgba(76,175,80,0.1)'"
+                            @mouseleave="$el.style.background='transparent'" title="Click for backup settings">
+                            <span>☁️</span>
+                            <span x-text="backupStatus || 'Auto-backup active'"></span>
                         </div>
                     </div>
 
@@ -1249,6 +1260,126 @@
                             efficient editing!
                         </p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GitHub Backup Settings Panel -->
+        <div class="slide-panel-right" :class="{ 'open': showBackupSettings }" x-cloak>
+            <div class="slide-panel-header">
+                <h3 style="margin:0;">☁️ Cloud Backup</h3>
+                <button class="btn btn-secondary" @click="closeBackupSettings()">Close</button>
+            </div>
+            <div class="slide-panel-body" style="padding:20px;">
+                <div
+                    style="background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-radius:8px;padding:16px;margin-bottom:24px;">
+                    <h4 style="margin:0 0 12px 0;color:var(--text-primary);">Setup Instructions</h4>
+                    <ol style="margin:0;padding-left:20px;line-height:1.8;font-size:14px;">
+                        <li>Go to <a href="https://github.com/settings/tokens" target="_blank"
+                                style="color:#4a9eff;">GitHub Settings → Developer settings → Personal access tokens</a>
+                        </li>
+                        <li>Click "Generate new token (classic)"</li>
+                        <li>Give it a name (e.g., "Writingway Backup")</li>
+                        <li>Expiration: Select <strong>"No expiration"</strong> for convenience</li>
+                        <li>Select the <strong>gist</strong> permission (only this one)</li>
+                        <li>Click "Generate token" and copy the token</li>
+                        <li>Paste it below</li>
+                    </ol>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;font-weight:600;margin-bottom:8px;">GitHub Token</label>
+                    <input type="password" x-model="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                        style="width:100%;padding:10px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:monospace;font-size:13px;">
+                    <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">
+                        <span x-show="githubUsername" style="color:#4caf50;">✓ Connected as: <strong
+                                x-text="githubUsername"></strong></span>
+                    </p>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="backupEnabled" style="width:18px;height:18px;">
+                        <span style="font-weight:600;">Enable automatic backup (every 5 minutes)</span>
+                    </label>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-bottom:20px;">
+                    <button class="btn btn-primary" @click="saveBackupSettings()" style="flex:1;">
+                        Save Settings
+                    </button>
+                    <button class="btn btn-secondary" @click="backupNow()" style="flex:1;">
+                        Backup Now
+                    </button>
+                </div>
+
+                <div x-show="backupStatus"
+                    style="padding:12px;background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-radius:6px;margin-bottom:20px;">
+                    <p style="margin:0;font-size:14px;" x-text="backupStatus"></p>
+                    <p x-show="lastBackupTime" style="margin:8px 0 0 0;font-size:12px;color:var(--text-secondary);">
+                        Last backup: <span
+                            x-text="lastBackupTime ? new Date(lastBackupTime).toLocaleString() : 'Never'"></span>
+                    </p>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:20px;">
+                    <button class="btn btn-secondary" @click="openRestoreModal()"
+                        :disabled="!githubToken || !currentProjectGistId" style="width:100%;">
+                        📥 Restore from Backup
+                    </button>
+                </div>
+
+                <div
+                    style="margin-top:20px;padding:16px;background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);border-radius:8px;">
+                    <p style="margin:0;font-size:13px;line-height:1.6;">
+                        <strong>Note:</strong> Each project is backed up to its own private GitHub Gist.
+                        Backups include all chapters, scenes, content, compendium entries, and prompts.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restore Backup Modal -->
+        <div x-show="showRestoreModal" class="modal-backdrop" @click.self="closeRestoreModal()" x-cloak
+            style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;">
+            <div class="modal-content"
+                style="background:var(--bg-secondary);padding:24px;border-radius:12px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;">
+                <h3 style="margin:0 0 20px 0;">Restore from Backup</h3>
+
+                <div x-show="backupList.length === 0"
+                    style="text-align:center;padding:40px;color:var(--text-secondary);">
+                    <p>Loading backups...</p>
+                </div>
+
+                <div x-show="backupList.length > 0">
+                    <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">
+                        Select a backup version to restore. This will replace your current project data.
+                    </p>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <template x-for="backup in backupList" :key="backup.version">
+                            <div
+                                style="padding:16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;">
+                                <div
+                                    style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+                                    <div>
+                                        <div style="font-weight:600;color:var(--text-primary);"
+                                            x-text="new Date(backup.timestamp).toLocaleString()"></div>
+                                        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+                                            Version: <span x-text="backup.version.substring(0, 7)"></span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary" @click="restoreBackup(backup.url)"
+                                        style="padding:8px 16px;font-size:13px;">
+                                        Restore
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div style="margin-top:24px;display:flex;justify-content:flex-end;">
+                    <button class="btn btn-secondary" @click="closeRestoreModal()">Cancel</button>
                 </div>
             </div>
         </div>
