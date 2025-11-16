@@ -81,15 +81,32 @@
                 try { content = await db.content.where('sceneId').equals(sceneId).first(); } catch (e) { content = null; }
             }
 
+            // Clean any RTL/LTR override characters from content
+            let cleanContent = content ? content.text : '';
+            if (cleanContent) {
+                // Remove Unicode bidirectional control characters that can cause RTL rendering
+                cleanContent = cleanContent.replace(/[\u202A-\u202E\u2066-\u2069]/g, '');
+            }
+
             app.currentScene = {
                 ...scene,
-                content: content ? content.text : ''
+                content: cleanContent
             };
 
             // Load scene-specific generation options into UI state
             app.povCharacter = scene.povCharacter || '';
             app.pov = scene.pov || '3rd person limited';
             app.tense = scene.tense || 'past';
+
+            // Force LTR direction on the editor after it's rendered
+            app.$nextTick(() => {
+                const editor = document.querySelector('.editor-textarea[contenteditable="true"]');
+                if (editor) {
+                    editor.setAttribute('dir', 'ltr');
+                    editor.style.direction = 'ltr';
+                    editor.style.unicodeBidi = 'normal';
+                }
+            });
 
             // Set currentChapter to the scene's chapter
             if (scene && scene.chapterId) {

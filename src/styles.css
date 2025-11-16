@@ -2,6 +2,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    direction: ltr;
 }
 
 :root {
@@ -24,6 +25,7 @@ body {
     color: var(--text-primary);
     height: 100vh;
     overflow: hidden;
+    direction: ltr !important;
 }
 
 .app-container {
@@ -799,6 +801,8 @@ body {
     outline: none;
     font-family: 'Georgia', serif;
     overflow-y: auto;
+    direction: ltr !important;
+    unicode-bidi: normal !important;
 }
 
 .editor-textarea::placeholder {

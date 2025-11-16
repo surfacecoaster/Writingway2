@@ -155,12 +155,15 @@
 
                 console.log('Raw content length:', rawContent.length);
 
-                // Convert Qt HTML to clean HTML
+                // Keep content as plain text (with optional HTML cleanup for .html files)
                 if (sceneFiles[0].endsWith('.html')) {
-                    sceneContent = this.convertQtHtmlToClean(rawContent);
+                    // Strip HTML tags and convert to plain text
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = rawContent;
+                    sceneContent = tempDiv.textContent || tempDiv.innerText || '';
                 } else {
-                    // Plain text - wrap in paragraph
-                    sceneContent = `<p>${rawContent.replace(/\n\n/g, '</p><p>')}</p>`;
+                    // Plain text - keep as-is
+                    sceneContent = rawContent;
                 }
 
                 console.log('Converted content length:', sceneContent.length);

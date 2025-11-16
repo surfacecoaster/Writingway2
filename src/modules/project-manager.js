@@ -347,9 +347,9 @@
                         }
                         const htmlText = content ? (content.text || '') : '';
 
-                        // Export as HTML to preserve formatting
+                        // Export as plain text/Markdown
                         const safeTitle = (s.title || 'scene').replace(/[^a-z0-9\-_. ]/ig, '_').slice(0, 80).trim();
-                        const filename = `scenes/${String(s.order).padStart(2, '0')}-${safeTitle || s.id}.html`;
+                        const filename = `scenes/${String(s.order).padStart(2, '0')}-${safeTitle || s.id}.txt`;
                         chapterObj.scenes.push({ id: s.id, title: s.title, order: s.order, filename });
                         zip.file(filename, htmlText || '');
                     }
