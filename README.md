@@ -64,15 +64,71 @@ Unlike its predecessor, this new version is built with **JavaScript + HTML**, ma
 
 ## 📦 Installation
 
-No technical setup required.
+### Quick Start (Recommended)
 
-1. **Download** the latest ZIP release  
-2. **Extract** the folder anywhere  
-3. Double‑click **`start.bat`**  
-4. Writingway opens at  
-   **http://localhost:8000**
+**Windows:**
+1. **Download** the latest ZIP release
+2. **Extract** the folder anywhere
+3. **Download llama.cpp** (for local AI):
+   - [CUDA (NVIDIA GPU)](https://github.com/ggerganov/llama.cpp/releases) - Download `llama-*-bin-win-cuda-cu12.2.0-x64.zip`
+   - [CPU only](https://github.com/ggerganov/llama.cpp/releases) - Download `llama-*-bin-win-avx2-x64.zip`
+   - Extract `llama-server.exe` to the Writingway folder
+4. **Download a model** (optional, for local AI):
+   - [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF) (2.5GB, fast)
+   - [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF) (5GB, better quality)
+   - Put the `.gguf` file in the `models/` folder
+5. Double-click **`start.bat`**
+6. Writingway opens at **http://localhost:8000**
 
-You're ready to write.
+**Mac:**
+1. **Download** the latest ZIP release
+2. **Extract** the folder anywhere
+3. **Download llama.cpp** (for local AI):
+   - [Apple Silicon (M1/M2/M3)](https://github.com/ggerganov/llama.cpp/releases) - Download `llama-*-bin-macos-arm64.zip`
+   - [Intel Mac](https://github.com/ggerganov/llama.cpp/releases) - Download `llama-*-bin-macos-x64.zip`
+   - Extract `llama-server` to the Writingway folder
+4. **Download a model** (optional, same as Windows step 4)
+5. Run in Terminal:
+   ```bash
+   chmod +x start.sh
+   ./start.sh
+   ```
+6. Writingway opens at **http://localhost:8000**
+
+**Linux:**
+1. **Download** the latest ZIP release
+2. **Extract** the folder anywhere
+3. **Download llama.cpp** (for local AI):
+   - [Ubuntu/Debian x64](https://github.com/ggerganov/llama.cpp/releases) - Download `llama-*-bin-ubuntu-x64.zip`
+   - Extract `llama-server` to the Writingway folder
+4. **Download a model** (optional, same as Windows step 4)
+5. Run in Terminal:
+   ```bash
+   chmod +x start.sh
+   ./start.sh
+   ```
+6. Writingway opens at **http://localhost:8000**
+
+### Alternative: Use Cloud AI (No Local Model Needed)
+
+If you don't want to download models:
+1. Skip steps 3-4 above
+2. Run `start.bat` (Windows) or `./start.sh` (Mac/Linux)
+3. When prompted, choose to start without a local model
+4. In Writingway, go to **⚙️ AI Settings** and configure:
+   - **OpenRouter** (has free models like Gemini 2.0 Flash)
+   - **Claude API** (Anthropic)
+   - **OpenAI API** (ChatGPT)
+   - **Google AI** (Gemini)
+
+### Advanced Users
+
+You can also use:
+- **LM Studio** - Run models with a GUI, connect via API mode
+- **Ollama** - Multiple models, simple CLI interface
+- **Jan** - Cross-platform local AI app
+
+Just configure the API endpoint in Writingway's AI Settings.
 
 ---
 
