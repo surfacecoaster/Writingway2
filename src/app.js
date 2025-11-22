@@ -454,6 +454,8 @@ document.addEventListener('alpine:init', () => {
         rewriteBtnY: 0,
         selectedTextForRewrite: '',
         rewriteSelectionRange: null,
+        rewriteTextareaStart: null,
+        rewriteTextareaEnd: null,
         showRewriteModal: false,
         rewriteOriginalText: '',
         rewriteOutput: '',
@@ -698,54 +700,56 @@ document.addEventListener('alpine:init', () => {
             this.updateLoadingScreen(85, 'Almost ready...', 'Finalizing setup...');
 
             // Selection change handler: show a floating "Rewrite" button when text is selected
-            document.addEventListener('selectionchange', () => {
+            // For textarea elements, we need to listen to mouseup and keyup events
+            const self = this;
+            const handleTextareaSelection = () => {
                 try {
-                    const editor = document.querySelector('.editor-textarea[contenteditable="true"]');
-                    if (!editor) {
-                        this.showRewriteBtn = false;
+                    const editor = document.querySelector('.editor-textarea');
+                    if (!editor || editor.tagName !== 'TEXTAREA') {
+                        self.showRewriteBtn = false;
                         return;
                     }
 
-                    const selection = window.getSelection();
-                    if (!selection || selection.rangeCount === 0) {
-                        this.showRewriteBtn = false;
+                    // Get selected text from textarea
+                    const start = editor.selectionStart;
+                    const end = editor.selectionEnd;
+
+                    if (start === end) {
+                        self.showRewriteBtn = false;
                         return;
                     }
 
-                    const selectedText = selection.toString().trim();
+                    const selectedText = editor.value.substring(start, end).trim();
                     if (!selectedText) {
-                        this.showRewriteBtn = false;
+                        self.showRewriteBtn = false;
                         return;
                     }
 
-                    // Check if the selection is within the editor
-                    const range = selection.getRangeAt(0);
-                    if (!editor.contains(range.commonAncestorContainer)) {
-                        this.showRewriteBtn = false;
+                    // Calculate position for the button using textarea coordinates
+                    const coords = self._getTextareaSelectionCoords(editor, end);
+                    if (!coords) {
+                        self.showRewriteBtn = false;
                         return;
                     }
 
-                    // Get the bounding rect of the selection
-                    const rect = range.getBoundingClientRect();
-                    if (!rect || rect.width === 0 || rect.height === 0) {
-                        this.showRewriteBtn = false;
-                        return;
-                    }
-
-                    // Position the button near the start of the selection for better visibility
-                    // Use left edge + small offset so it's close to where selection started
-                    const btnLeft = rect.left + 8;
-                    // Keep inside viewport with small margin
-                    this.rewriteBtnX = Math.min(window.innerWidth - 140, Math.max(8, btnLeft));
-                    this.rewriteBtnY = Math.max(8, rect.bottom + 6);
-                    this.selectedTextForRewrite = selectedText;
-                    // Show only the floating button; modal behavior removed
-                    this.showRewriteBtn = true;
+                    // Position the button near the end of the selection
+                    const btnLeft = coords.left + 8;
+                    self.rewriteBtnX = Math.min(window.innerWidth - 140, Math.max(8, btnLeft));
+                    self.rewriteBtnY = Math.max(8, coords.top + coords.height + 6);
+                    self.selectedTextForRewrite = selectedText;
+                    // Store selection range for later
+                    self.rewriteTextareaStart = start;
+                    self.rewriteTextareaEnd = end;
+                    self.showRewriteBtn = true;
                 } catch (e) {
                     // don't let selection code break the app
-                    this.showRewriteBtn = false;
+                    self.showRewriteBtn = false;
                 }
-            });
+            };
+
+            // Add listeners for selection changes in textarea
+            document.addEventListener('mouseup', handleTextareaSelection);
+            document.addEventListener('keyup', handleTextareaSelection);
             // Mount the beat splitter which allows resizing the beat textarea
             try { this.mountBeatSplitter(); } catch (err) { /* ignore */ }
 
@@ -835,14 +839,21 @@ document.addEventListener('alpine:init', () => {
         // Handle clicks on the floating Rewrite button: open modal with selected text
         handleRewriteButtonClick() {
             try {
-                const selection = window.getSelection();
-                if (selection && selection.rangeCount > 0) {
-                    // Store the range for later replacement
-                    this.rewriteSelectionRange = selection.getRangeAt(0).cloneRange();
-                    this.rewriteOriginalText = selection.toString();
-                } else {
+                // For textarea, use stored selection indices
+                const editor = document.querySelector('.editor-textarea');
+                if (editor && editor.tagName === 'TEXTAREA') {
                     this.rewriteOriginalText = this.selectedTextForRewrite || '';
-                    this.rewriteSelectionRange = null;
+                    // Keep the selection indices for later replacement
+                } else {
+                    // Fallback for contenteditable (if ever used)
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        this.rewriteSelectionRange = selection.getRangeAt(0).cloneRange();
+                        this.rewriteOriginalText = selection.toString();
+                    } else {
+                        this.rewriteOriginalText = this.selectedTextForRewrite || '';
+                        this.rewriteSelectionRange = null;
+                    }
                 }
                 this.rewriteOutput = '';
                 this.rewritePromptPreview = '';
@@ -901,10 +912,21 @@ document.addEventListener('alpine:init', () => {
             try {
                 if (!this.currentScene || !this.rewriteOutput) return;
 
-                // If we have a stored range, use it to replace the text in the contenteditable
-                if (this.rewriteSelectionRange) {
-                    const editor = document.querySelector('.editor-textarea[contenteditable="true"]');
-                    if (editor) {
+                const editor = document.querySelector('.editor-textarea');
+                if (editor && editor.tagName === 'TEXTAREA') {
+                    // Replace text in textarea using stored selection indices
+                    if (this.rewriteTextareaStart !== null && this.rewriteTextareaEnd !== null) {
+                        const before = this.currentScene.content.substring(0, this.rewriteTextareaStart);
+                        const after = this.currentScene.content.substring(this.rewriteTextareaEnd);
+                        this.currentScene.content = before + this.rewriteOutput + after;
+
+                        // Save the scene
+                        await this.saveCurrentScene();
+                    }
+                } else if (this.rewriteSelectionRange) {
+                    // Fallback for contenteditable (if ever used)
+                    const contentEditor = document.querySelector('.editor-textarea[contenteditable="true"]');
+                    if (contentEditor) {
                         // Delete the selected content and insert the new text
                         this.rewriteSelectionRange.deleteContents();
                         const textNode = document.createTextNode(this.rewriteOutput);
@@ -912,7 +934,7 @@ document.addEventListener('alpine:init', () => {
 
                         // Trigger the input event to save the change
                         const event = new Event('input', { bubbles: true });
-                        editor.dispatchEvent(event);
+                        contentEditor.dispatchEvent(event);
                     }
                 }
 
@@ -920,6 +942,8 @@ document.addEventListener('alpine:init', () => {
                 this.rewriteOriginalText = '';
                 this.rewriteOutput = '';
                 this.rewriteSelectionRange = null;
+                this.rewriteTextareaStart = null;
+                this.rewriteTextareaEnd = null;
             } catch (e) {
                 console.error('acceptRewrite error', e);
             }
@@ -937,6 +961,8 @@ document.addEventListener('alpine:init', () => {
             this.rewriteOriginalText = '';
             this.rewriteOutput = '';
             this.rewritePromptPreview = '';
+            this.rewriteTextareaStart = null;
+            this.rewriteTextareaEnd = null;
         },
 
         // AI Configuration Functions - delegated to AISettings
