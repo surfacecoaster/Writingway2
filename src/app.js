@@ -361,6 +361,9 @@ document.addEventListener('alpine:init', () => {
         selectedSummaryPromptId: null,
         showSummaryPromptList: false,
 
+        // Tags (for scenes only)
+        sceneTags: '', // Comma-separated tags for current scene being edited
+
         // Prompts / Codex state
         prompts: [],
         promptCategories: ['prose', 'rewrite', 'summary', 'workshop'],
@@ -1108,6 +1111,8 @@ document.addEventListener('alpine:init', () => {
                 this.summaryTargetSceneId = sceneId;
                 this.summaryTargetChapterId = null;
                 this.summaryText = (scene && (scene.summary || '')) || '';
+                // Load tags (array to comma-separated string)
+                this.sceneTags = (scene && scene.tags && Array.isArray(scene.tags)) ? scene.tags.join(', ') : '';
                 this.showSummaryPanel = true;
             } catch (e) {
                 console.error('openSceneSummary error', e);
@@ -1121,6 +1126,7 @@ document.addEventListener('alpine:init', () => {
                 this.summaryTargetChapterId = chapterId;
                 this.summaryTargetSceneId = null;
                 this.summaryText = (chapter && (chapter.summary || '')) || '';
+                this.sceneTags = ''; // Clear tags for chapters
                 this.showSummaryPanel = true;
             } catch (e) {
                 console.error('openChapterSummary error', e);
@@ -1200,11 +1206,26 @@ document.addEventListener('alpine:init', () => {
             try {
                 const id = this.summaryTargetSceneId;
                 if (!id) return;
+
+                // Parse tags from comma-separated string to array
+                const tagsArray = this.sceneTags
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+
                 // update DB (create/overwrite summary field and summaryUpdated)
                 // Safe-merge update: read current record, merge summary fields, then put back.
                 try {
                     const cur = await db.scenes.get(id) || {};
-                    const merged = Object.assign({}, cur, { summary: this.summaryText, summaryUpdated: new Date().toISOString(), summarySource: 'manual', summaryStale: false, modified: new Date(), id });
+                    const merged = Object.assign({}, cur, {
+                        summary: this.summaryText,
+                        summaryUpdated: new Date().toISOString(),
+                        summarySource: 'manual',
+                        summaryStale: false,
+                        tags: tagsArray,
+                        modified: new Date(),
+                        id
+                    });
                     await db.scenes.put(merged);
                 } catch (e) {
                     console.warn('[App] saveSceneSummary write/readback failed', e);
@@ -1219,6 +1240,7 @@ document.addEventListener('alpine:init', () => {
                     s.summaryUpdated = new Date().toISOString();
                     s.summarySource = 'manual';
                     s.summaryStale = false;
+                    s.tags = tagsArray;
                 }
                 // Also update chapter-scoped scenes so the sidebar reflects changes immediately
                 try {
@@ -1232,6 +1254,7 @@ document.addEventListener('alpine:init', () => {
                                 cs.summaryUpdated = new Date().toISOString();
                                 cs.summarySource = 'manual';
                                 cs.summaryStale = false;
+                                cs.tags = tagsArray;
                             }
                         }
                     }
@@ -1241,10 +1264,13 @@ document.addEventListener('alpine:init', () => {
                     this.currentScene.summaryUpdated = new Date().toISOString();
                     this.currentScene.summarySource = 'manual';
                     this.currentScene.summaryStale = false;
+                    this.currentScene.tags = tagsArray;
                 }
 
                 this.showSummaryPanel = false;
                 this.summaryTargetSceneId = null;
+                this.summaryText = '';
+                this.sceneTags = '';
                 this.saveStatus = 'Summary saved';
                 setTimeout(() => { this.saveStatus = 'Saved'; }, 1200);
             } catch (e) {
@@ -1358,6 +1384,23 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 console.error('saveChapterSummary error', e);
             }
+        },
+
+        // Get all unique tags from scenes in the current project
+        getAllTags() {
+            const tagsSet = new Set();
+            if (this.scenes && Array.isArray(this.scenes)) {
+                this.scenes.forEach(scene => {
+                    if (scene.tags && Array.isArray(scene.tags)) {
+                        scene.tags.forEach(tag => {
+                            if (tag && tag.trim()) {
+                                tagsSet.add(tag.trim());
+                            }
+                        });
+                    }
+                });
+            }
+            return Array.from(tagsSet).sort();
         },
 
         // Project Management
