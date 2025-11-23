@@ -117,24 +117,23 @@
                     });
 
                     if (updatedScene && updatedScene.updatedAt && updatedScene.updatedAt > loadedTimestamp) {
-                        // Check if user was recently active - if so, don't interrupt them
-                        const timeSinceActivity = Date.now() - lastActivityTime;
-                        const wasRecentlyActive = timeSinceActivity < ACTIVITY_THRESHOLD;
+                        // Check if user has unsaved changes - if so, don't interrupt them
+                        const hasUnsavedChanges = app.currentScene.content !== updatedScene.content;
 
-                        console.log('🔍 Activity check:', {
-                            timeSinceActivity,
-                            wasRecentlyActive,
-                            threshold: ACTIVITY_THRESHOLD
+                        console.log('🔍 Content check:', {
+                            hasUnsavedChanges,
+                            currentLength: app.currentScene.content?.length,
+                            dbLength: updatedScene.content?.length
                         });
 
-                        if (wasRecentlyActive) {
-                            console.log('⏭️ User was recently active, silently updating loadedUpdatedAt without showing dialog');
+                        if (hasUnsavedChanges) {
+                            console.log('⏭️ User has unsaved changes, silently updating loadedUpdatedAt without showing dialog');
                             // Silently acknowledge the change so we don't get repeated notifications
                             if (app.currentScene) {
                                 app.currentScene.loadedUpdatedAt = updatedScene.updatedAt;
                             }
                         } else {
-                            // Scene was modified in another tab and user hasn't been active recently
+                            // Scene was modified in another tab and user has no unsaved changes
                             console.warn('⚠️ Showing conflict dialog');
                             const shouldReload = confirm(
                                 `This scene was modified in another tab.\n\n` +
