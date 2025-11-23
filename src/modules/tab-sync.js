@@ -75,7 +75,9 @@
                 // Reload scene if it's currently open in another tab
                 if (app.currentScene?.id === data.id) {
                     const updatedScene = await db.scenes.get(data.id);
-                    if (updatedScene && updatedScene.updatedAt !== app.currentScene.updatedAt) {
+                    // Only show conflict if the DB version is newer than what we loaded
+                    const loadedTimestamp = app.currentScene.loadedUpdatedAt || 0;
+                    if (updatedScene && updatedScene.updatedAt && updatedScene.updatedAt > loadedTimestamp) {
                         // Scene was modified in another tab
                         const shouldReload = confirm(
                             `This scene was modified in another tab.\n\n` +
@@ -88,25 +90,6 @@
                 } else if (app.currentProject?.id === data.projectId) {
                     // Refresh scene list if viewing same project but different scene
                     await app.loadChapters?.();
-                }
-                break;
-
-            case MSG_TYPES.CONTENT_SAVED:
-                // If viewing the same scene, check for conflicts
-                if (app.currentScene?.id === data.sceneId) {
-                    const updatedContent = await db.content.get(data.sceneId);
-                    if (updatedContent && app.currentScene.content) {
-                        const currentContentTimestamp = app.currentScene.contentUpdatedAt || 0;
-                        if (updatedContent.updatedAt > currentContentTimestamp) {
-                            const shouldReload = confirm(
-                                `This scene's content was modified in another tab.\n\n` +
-                                `Click OK to reload the latest version, or Cancel to keep your current changes.`
-                            );
-                            if (shouldReload) {
-                                await app.loadScene?.(data.sceneId);
-                            }
-                        }
-                    }
                 }
                 break;
 

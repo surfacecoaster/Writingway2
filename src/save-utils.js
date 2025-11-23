@@ -75,15 +75,6 @@
 
             await db.content.put(contentRecord);
 
-            // Broadcast content change
-            if (window.TabSync) {
-                window.TabSync.broadcast(window.TabSync.MSG_TYPES.CONTENT_SAVED, {
-                    sceneId: scene.id,
-                    projectId: scene.projectId,
-                    updatedAt: now
-                });
-            }
-
             const scenePatch = {
                 id: scene.id,
                 projectId: scene.projectId || (app.currentProject && app.currentProject.id) || null,
