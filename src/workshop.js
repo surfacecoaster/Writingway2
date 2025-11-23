@@ -118,6 +118,15 @@ window.workshopChat = {
                         // Fetch the actual scene content from the content table
                         const sceneContent = await db.content.get(scene.id);
                         const content = sceneContent ? sceneContent.text : '';
+
+                        // Log scene info for debugging Cyrillic/encoding issues
+                        console.log(`📖 Adding scene "${scene.title}" to workshop context:`, {
+                            contentLength: content.length,
+                            wordCount: content.split(/\s+/).length,
+                            hasNonAscii: /[^\x00-\x7F]/.test(content),
+                            firstChars: content.slice(0, 50)
+                        });
+
                         contextParts.push(`[Scene: ${scene.title}]\n${content}`);
                     }
                 }
@@ -231,6 +240,14 @@ window.workshopChat = {
             // Build the full prompt with context
             const promptMessages = await this.buildWorkshopPrompt(app, message);
 
+            // Log prompt size for debugging
+            const totalPromptLength = JSON.stringify(promptMessages).length;
+            console.log('📊 Workshop prompt stats:', {
+                messageCount: promptMessages.length,
+                totalChars: totalPromptLength,
+                totalBytes: new Blob([JSON.stringify(promptMessages)]).size
+            });
+
             // Check if Generation module is available
             if (!window.Generation || typeof window.Generation.streamGeneration !== 'function') {
                 throw new Error('Generation module not available');
@@ -267,6 +284,7 @@ window.workshopChat = {
 
         } catch (error) {
             console.error('Workshop chat error:', error);
+            console.error('Error stack:', error.stack);
             currentSession.messages[assistantMessageIndex].content = `Error: ${error.message}`;
             currentSession.messages[assistantMessageIndex].isError = true;
             currentSession.messages = [...currentSession.messages];
