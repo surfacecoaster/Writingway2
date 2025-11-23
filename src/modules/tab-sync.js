@@ -8,6 +8,10 @@
     // Unique identifier for this tab instance
     const TAB_ID = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+    // Track last user activity to avoid interrupting active editing
+    let lastActivityTime = Date.now();
+    const ACTIVITY_THRESHOLD = 5000; // 5 seconds - if user was active in last 5s, don't interrupt
+
     // Message types
     const MSG_TYPES = {
         PROJECT_SAVED: 'project:saved',
@@ -38,6 +42,14 @@
 
         app = appInstance;
         channel = new BroadcastChannel(CHANNEL_NAME);
+
+        // Track user activity to avoid interrupting active editing
+        const trackActivity = () => {
+            lastActivityTime = Date.now();
+        };
+        document.addEventListener('keydown', trackActivity);
+        document.addEventListener('click', trackActivity);
+        document.addEventListener('input', trackActivity);
 
         channel.onmessage = async (event) => {
             const { type, data, tabId } = event.data;
@@ -100,23 +112,24 @@
                     });
 
                     if (updatedScene && updatedScene.updatedAt && updatedScene.updatedAt > loadedTimestamp) {
-                        // Only show conflict dialog if this tab doesn't have focus
-                        // If user is actively working here, don't interrupt them
-                        const hasFocus = document.hasFocus();
-                        console.log('🔍 Focus check:', {
-                            hasFocus,
-                            activeElement: document.activeElement?.tagName,
-                            activeElementId: document.activeElement?.id
+                        // Check if user was recently active - if so, don't interrupt them
+                        const timeSinceActivity = Date.now() - lastActivityTime;
+                        const wasRecentlyActive = timeSinceActivity < ACTIVITY_THRESHOLD;
+
+                        console.log('🔍 Activity check:', {
+                            timeSinceActivity,
+                            wasRecentlyActive,
+                            threshold: ACTIVITY_THRESHOLD
                         });
 
-                        if (hasFocus) {
-                            console.log('⏭️ Tab has focus, silently updating loadedUpdatedAt without showing dialog');
+                        if (wasRecentlyActive) {
+                            console.log('⏭️ User was recently active, silently updating loadedUpdatedAt without showing dialog');
                             // Silently acknowledge the change so we don't get repeated notifications
                             if (app.currentScene) {
                                 app.currentScene.loadedUpdatedAt = updatedScene.updatedAt;
                             }
                         } else {
-                            // Scene was modified in another tab and this tab is inactive
+                            // Scene was modified in another tab and user hasn't been active recently
                             console.warn('⚠️ Showing conflict dialog');
                             const shouldReload = confirm(
                                 `This scene was modified in another tab.\n\n` +
