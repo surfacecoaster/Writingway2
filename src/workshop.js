@@ -116,7 +116,7 @@ window.workshopChat = {
 
                     if (scene) {
                         // Fetch the actual scene content from the content table
-                        const sceneContent = await db.content.get({ sceneId: scene.id });
+                        const sceneContent = await db.content.get(scene.id);
                         const content = sceneContent ? sceneContent.text : '';
                         contextParts.push(`[Scene: ${scene.title}]\n${content}`);
                     }
@@ -133,7 +133,7 @@ window.workshopChat = {
                     const scene = app.scenes.find(s => s.id === ctx.id);
                     if (scene) {
                         // Fetch the actual scene content from the content table
-                        const sceneContent = await db.content.get({ sceneId: scene.id });
+                        const sceneContent = await db.content.get(scene.id);
                         const content = sceneContent ? sceneContent.text : '';
                         contextParts.push(`[Scene: ${scene.title}]\n${content}`);
                     }

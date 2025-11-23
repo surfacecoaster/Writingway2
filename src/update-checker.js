@@ -4,7 +4,7 @@
     const UpdateChecker = {
         // Build timestamp - update this when you push a new version
         // This represents when this version was created
-        buildDate: new Date('2025-11-23T19:55:00Z').getTime(), // Update before each push
+        buildDate: new Date('2025-11-23T20:20:00Z').getTime(), // Update before each push
 
         // GitHub repository info
         repoOwner: 'aomukai',
@@ -17,7 +17,7 @@
          */
         async checkForUpdates() {
             try {
-                // Fetch latest commit from the main branch
+                // Fetch latest commit from the main branchscm-history-item:e%3A%5CWritingway2?%7B%22repositoryId%22%3A%22scm0%22%2C%22historyItemId%22%3A%22f46a020f4d39216e401318130b0a4f7934d366f8%22%2C%22historyItemParentId%22%3A%22d18a5aa189144e323b651fe30611164f32132c9f%22%2C%22historyItemDisplayId%22%3A%22f46a020%22%7D
                 const response = await fetch(`https://api.github.com/repos/${this.repoOwner}/${this.repoName}/commits/${this.branch}`);
                 if (!response.ok) {
                     console.log('Could not check for updates:', response.status);
