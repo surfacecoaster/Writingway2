@@ -100,19 +100,29 @@
                     });
 
                     if (updatedScene && updatedScene.updatedAt && updatedScene.updatedAt > loadedTimestamp) {
-                        // Scene was modified in another tab
-                        console.warn('⚠️ Showing conflict dialog');
-                        const shouldReload = confirm(
-                            `This scene was modified in another tab.\n\n` +
-                            `Click OK to reload the latest version, or Cancel to keep your current changes.`
-                        );
-                        if (shouldReload) {
-                            await app.loadScene?.(data.id);
-                        } else {
-                            // User chose to keep their version - update timestamp to prevent repeated conflicts
-                            console.log('✅ User cancelled, updating loadedUpdatedAt to', updatedScene.updatedAt);
+                        // Only show conflict dialog if this tab doesn't have focus
+                        // If user is actively working here, don't interrupt them
+                        if (document.hasFocus()) {
+                            console.log('⏭️ Tab has focus, silently updating loadedUpdatedAt without showing dialog');
+                            // Silently acknowledge the change so we don't get repeated notifications
                             if (app.currentScene) {
                                 app.currentScene.loadedUpdatedAt = updatedScene.updatedAt;
+                            }
+                        } else {
+                            // Scene was modified in another tab and this tab is inactive
+                            console.warn('⚠️ Showing conflict dialog');
+                            const shouldReload = confirm(
+                                `This scene was modified in another tab.\n\n` +
+                                `Click OK to reload the latest version, or Cancel to keep your current changes.`
+                            );
+                            if (shouldReload) {
+                                await app.loadScene?.(data.id);
+                            } else {
+                                // User chose to keep their version - update timestamp to prevent repeated conflicts
+                                console.log('✅ User cancelled, updating loadedUpdatedAt to', updatedScene.updatedAt);
+                                if (app.currentScene) {
+                                    app.currentScene.loadedUpdatedAt = updatedScene.updatedAt;
+                                }
                             }
                         }
                     }
