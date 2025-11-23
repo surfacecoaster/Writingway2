@@ -1366,6 +1366,22 @@
                         </p>
                     </div>
 
+                    <!-- Force Non-Streaming Toggle (for API mode only) -->
+                    <div x-show="aiMode === 'api'" style="margin-bottom:16px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" x-model="forceNonStreaming" @change="saveGenerationParams()"
+                                style="width:16px;height:16px;cursor:pointer;">
+                            <span style="font-size:13px;color:var(--text-primary);">
+                                Force non-streaming mode
+                            </span>
+                        </label>
+                        <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;padding-left:24px;">
+                            Enable this if your model doesn't support streaming or returns empty responses. Most
+                            thinking models (o1, o3, reasoning models) are auto-detected, but use this for any others
+                            that need it.
+                        </p>
+                    </div>
+
                     <div x-show="aiProvider === 'custom'" style="margin-bottom:16px;">
                         <label
                             style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">Custom

@@ -216,6 +216,38 @@
         const temp = temperature || 0.8;
         const maxTok = maxTokens || 300;
 
+        // Check if user has explicitly forced non-streaming mode
+        const userForcedNonStreaming = app?.forceNonStreaming || false;
+
+        // Detect thinking models that don't support streaming
+        // This includes known patterns and can be expanded as new models emerge
+        // TODO: Consider adding a user-facing "Force non-streaming" toggle in AI settings
+        // for models that aren't auto-detected but still need it
+        const modelLower = (model || '').toLowerCase();
+        const isThinkingModel = model && (
+            // OpenAI o-series (o1, o3, o4, etc.)
+            /\bo[0-9][-_]/.test(model) ||
+            // Explicit reasoning/thinking indicators
+            modelLower.includes('reasoning') ||
+            modelLower.includes('think') ||
+            modelLower.includes('thought') ||
+            // Known thinking model families
+            modelLower.includes('deepseek-reasoner') ||
+            modelLower.includes('qwq') ||
+            modelLower.includes('r1') && modelLower.includes('deepseek')
+        );
+
+        const shouldDisableStreaming = userForcedNonStreaming || isThinkingModel;
+
+        if (shouldDisableStreaming) {
+            if (userForcedNonStreaming) {
+                console.log('🔧 Non-streaming mode forced by user setting');
+            }
+            if (isThinkingModel) {
+                console.log('🧠 Thinking model detected:', model, '- will use non-streaming mode');
+            }
+        }
+
         if (provider === 'openrouter') {
             url = 'https://openrouter.ai/api/v1/chat/completions';
             headers = {
@@ -229,7 +261,7 @@
                 messages: messages,
                 temperature: temp,
                 max_tokens: maxTok,
-                stream: true
+                stream: !shouldDisableStreaming // Disable streaming for thinking models or if forced
             };
         } else if (provider === 'anthropic') {
             url = 'https://api.anthropic.com/v1/messages';
@@ -243,7 +275,7 @@
                 messages: messages,
                 temperature: temp,
                 max_tokens: maxTok,
-                stream: true
+                stream: true // Anthropic models all support streaming
             };
         } else if (provider === 'openai') {
             url = 'https://api.openai.com/v1/chat/completions';
@@ -256,7 +288,7 @@
                 messages: messages,
                 temperature: temp,
                 max_tokens: maxTok,
-                stream: true
+                stream: !shouldDisableStreaming // Disable streaming for thinking models or if forced
             };
         } else if (provider === 'google') {
             // Google AI uses a different API format - extract text from messages
@@ -304,11 +336,13 @@
 
         // Check if response is actually streaming or if it's a complete response
         const contentType = response.headers.get('content-type');
+        console.log('📋 Response Content-Type:', contentType);
 
         // Some thinking models don't support streaming and return complete JSON
         if (contentType?.includes('application/json') && !contentType?.includes('text/event-stream')) {
             console.log('📦 Non-streaming response detected (likely thinking model)');
             const data = await response.json();
+            console.log('📄 Full response data:', JSON.stringify(data, null, 2));
 
             // Extract content from non-streaming response
             let content = null;
@@ -320,6 +354,8 @@
                 content = data.candidates?.[0]?.content?.parts?.[0]?.text;
             }
 
+            console.log('✅ Extracted content length:', content?.length || 0);
+
             if (content) {
                 // Emit content in chunks to simulate streaming
                 const words = content.split(/(\s+)/);
@@ -327,6 +363,8 @@
                     onToken(word);
                     await new Promise(resolve => setTimeout(resolve, 10)); // Small delay for UI
                 }
+            } else {
+                console.error('❌ No content found in non-streaming response');
             }
             return;
         }
@@ -352,6 +390,7 @@
                     let jsonStr = line;
                     if (line.startsWith('data: ')) jsonStr = line.slice(6);
                     if (jsonStr === '[DONE]') {
+                        console.log('🏁 Stream finished with [DONE]');
                         if (!hasReceivedContent) {
                             console.warn('⚠️ Stream ended without content - possible thinking model without streaming support');
                         }
@@ -359,6 +398,11 @@
                     }
 
                     const data = JSON.parse(jsonStr);
+
+                    // Debug: Log every chunk to see what we're receiving
+                    if (!hasReceivedContent) {
+                        console.log('🔍 First chunk received:', JSON.stringify(data, null, 2));
+                    }
 
                     // Extract token based on provider format
                     let token = null;
@@ -369,11 +413,16 @@
                         if (delta) {
                             // Try reasoning_content first (for thinking models)
                             token = delta.reasoning_content || delta.content;
+
+                            if (!hasReceivedContent && delta) {
+                                console.log('🔍 Delta object:', JSON.stringify(delta, null, 2));
+                            }
                         }
 
                         // Some models put the complete message in the first chunk
                         if (!token && data.choices?.[0]?.message?.content) {
                             token = data.choices[0].message.content;
+                            console.log('📝 Found complete message in chunk');
                         }
                     } else if (provider === 'anthropic') {
                         if (data.type === 'content_block_delta') {
@@ -386,16 +435,22 @@
                     if (token) {
                         hasReceivedContent = true;
                         onToken(token);
+                    } else if (!hasReceivedContent) {
+                        console.log('⚠️ No token extracted from chunk');
                     }
                 } catch (e) {
                     // Ignore parse errors for incomplete chunks
-                    console.debug('Parse error (likely incomplete chunk):', e);
+                    console.debug('Parse error (likely incomplete chunk):', e.message);
                 }
             }
         }
 
         if (!hasReceivedContent) {
             console.error('⚠️ No content received from stream');
+            console.error('This usually happens with thinking models that either:');
+            console.error('1. Do not support streaming at all');
+            console.error('2. Return content in a different field structure');
+            console.error('3. Require stream=false in the API request');
             throw new Error('No content received from API. This model may not support streaming or may require different parameters.');
         }
     }

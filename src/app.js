@@ -430,6 +430,7 @@ document.addEventListener('alpine:init', () => {
         // Generation Parameters
         temperature: 0.8,
         maxTokens: 300,
+        forceNonStreaming: false, // Force non-streaming mode for models that don't support it
 
         // Available models per provider
         providerModels: {
@@ -675,6 +676,7 @@ document.addEventListener('alpine:init', () => {
             this.$watch('aiEndpoint', () => { if (!this.isInitializing) this.saveGenerationParams(); });
             this.$watch('temperature', () => { if (!this.isInitializing) this.saveGenerationParams(); });
             this.$watch('maxTokens', () => { if (!this.isInitializing) this.saveGenerationParams(); });
+            this.$watch('forceNonStreaming', () => { if (!this.isInitializing) this.saveGenerationParams(); });
 
             this.updateLoadingScreen(70, 'Loading features...', 'Setting up text-to-speech and updates...');
 

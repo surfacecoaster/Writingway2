@@ -117,7 +117,8 @@
                     model: app.aiModel,
                     endpoint: app.aiEndpoint || (app.aiMode === 'local' ? 'http://localhost:8080' : ''),
                     temperature: app.temperature,
-                    maxTokens: app.maxTokens
+                    maxTokens: app.maxTokens,
+                    forceNonStreaming: app.forceNonStreaming || false
                 };
                 localStorage.setItem('writingway:aiSettings', JSON.stringify(settings));
             } catch (e) {
@@ -139,7 +140,8 @@
                     model: app.aiModel,
                     endpoint: app.aiEndpoint || (app.aiMode === 'local' ? 'http://localhost:8080' : ''),
                     temperature: app.temperature,
-                    maxTokens: app.maxTokens
+                    maxTokens: app.maxTokens,
+                    forceNonStreaming: app.forceNonStreaming || false
                 };
                 localStorage.setItem('writingway:aiSettings', JSON.stringify(settings));
 
@@ -248,6 +250,7 @@
                     app.aiEndpoint = settings.endpoint || '';
                     app.temperature = settings.temperature || 0.8;
                     app.maxTokens = settings.maxTokens || 300;
+                    app.forceNonStreaming = settings.forceNonStreaming || false;
 
                     // Fetch fresh model list if we have API credentials
                     if (app.aiMode === 'api' && app.aiApiKey) {
