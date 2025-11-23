@@ -5,6 +5,9 @@
     let channel = null;
     let app = null;
 
+    // Unique identifier for this tab instance
+    const TAB_ID = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
     // Message types
     const MSG_TYPES = {
         PROJECT_SAVED: 'project:saved',
@@ -31,7 +34,13 @@
         channel = new BroadcastChannel(CHANNEL_NAME);
 
         channel.onmessage = async (event) => {
-            const { type, data } = event.data;
+            const { type, data, tabId } = event.data;
+
+            // Ignore messages from this tab
+            if (tabId === TAB_ID) {
+                return;
+            }
+
             console.log('📡 Received sync message:', type, data);
 
             try {
@@ -41,7 +50,7 @@
             }
         };
 
-        console.log('✅ Tab sync initialized');
+        console.log('✅ Tab sync initialized with ID:', TAB_ID);
     }
 
     async function handleMessage(type, data) {
@@ -155,7 +164,7 @@
     function broadcast(type, data) {
         if (!channel) return;
 
-        const message = { type, data, timestamp: Date.now() };
+        const message = { type, data, timestamp: Date.now(), tabId: TAB_ID };
         console.log('📤 Broadcasting:', message);
         channel.postMessage(message);
     }
