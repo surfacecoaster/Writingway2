@@ -296,6 +296,8 @@ document.addEventListener('alpine:init', () => {
 
         // Workshop Chat state
         showWorkshopChat: false,
+        showEmbeddedWorkshop: false,
+        workshopSplitterPosition: 50, // percentage
         workshopSessions: [],
         currentWorkshopSessionIndex: 0,
         // Ensure at least one session exists when opening
