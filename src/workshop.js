@@ -173,7 +173,9 @@ window.workshopChat = {
             return [];
         }
 
-        const messages = session.messages;
+        // Filter out messages with empty content (like placeholder assistant messages)
+        const validMessages = session.messages.filter(m => m.content && m.content.trim());
+
         const maxMessages = {
             'high': 50,
             'balanced': 20,
@@ -181,12 +183,12 @@ window.workshopChat = {
         }[mode] || 20;
 
         // For now, simple truncation - we can add summarization later
-        if (messages.length <= maxMessages) {
-            return [...messages];
+        if (validMessages.length <= maxMessages) {
+            return [...validMessages];
         }
 
         // Take the most recent messages
-        return messages.slice(-maxMessages);
+        return validMessages.slice(-maxMessages);
     },
 
     /**
@@ -212,6 +214,10 @@ window.workshopChat = {
 
         const currentSession = app.workshopSessions[app.currentWorkshopSessionIndex];
         if (!currentSession) return;
+
+        // Check if this is the first user message in the session
+        const isFirstMessage = currentSession.messages.filter(m => m.role === 'user').length === 0;
+        const hasDefaultName = /^Chat \d+$/.test(currentSession.name);
 
         // Add user message to session
         currentSession.messages.push({
@@ -277,8 +283,33 @@ window.workshopChat = {
                 alert('⚠️ The response reached the token limit and may be incomplete.\n\nTip: Increase "Max Length" in AI Settings (⚙️) for longer responses.');
             }
 
-            // Save sessions to database
+            // Save sessions to database first
             await app.saveWorkshopSessions();
+
+            // If this is the first message and chat has default name, generate a new name
+            // Do this AFTER saving to avoid conflicts
+            if (isFirstMessage && hasDefaultName) {
+                // Capture the message content and the workshopChat reference
+                const firstUserMessage = message;
+                const workshopChatModule = this;
+
+                console.log('🏷️ Scheduling name generation for new chat...');
+                // Use setTimeout to ensure the main response is fully processed
+                setTimeout(async () => {
+                    try {
+                        console.log('🏷️ Generating name for new chat...');
+                        const generatedName = await workshopChatModule.generateChatName(app, firstUserMessage);
+                        currentSession.name = generatedName;
+                        // Force array update to trigger reactivity
+                        app.workshopSessions = [...app.workshopSessions];
+                        console.log('✓ Chat renamed to:', generatedName);
+                        // Save the updated name
+                        await app.saveWorkshopSessions();
+                    } catch (error) {
+                        console.error('Failed to generate chat name:', error);
+                    }
+                }, 500);
+            }
 
             // Final scroll to ensure message is fully visible
             requestAnimationFrame(() => {
@@ -507,5 +538,74 @@ window.workshopChat = {
                 try { ta.focus(); ta.selectionStart = ta.selectionEnd = (before + insert).length; } catch (e) { }
             });
         } catch (e) { console.error('selectWorkshopSceneMatch error', e); }
+    },
+
+    /**
+     * Generate a short, descriptive name for a chat session based on its first message
+     * @param {Object} app - Alpine app instance
+     * @param {string} firstMessage - The first user message in the chat
+     * @returns {Promise<string>} - Generated chat name (3-5 words)
+     */
+    async generateChatName(app, firstMessage) {
+        try {
+            console.log('generateChatName called with message:', firstMessage ? firstMessage.substring(0, 100) : 'EMPTY');
+
+            if (!firstMessage || !firstMessage.trim()) {
+                console.warn('generateChatName: Empty message provided, returning default name');
+                return 'New Chat';
+            }
+
+            const messageContent = firstMessage.trim();
+
+            // Create a simple prompt to generate a short name
+            const namePrompt = [
+                {
+                    role: 'system',
+                    content: 'You are a helpful assistant that generates short, descriptive titles. Generate a 3-5 word title for a chat conversation based on the first message. Only respond with the title, nothing else. Do not use quotes.'
+                },
+                {
+                    role: 'user',
+                    content: `Generate a 3-5 word title for this chat:\n\n${messageContent.substring(0, 500)}`
+                }
+            ];
+
+            // Validate all messages have content
+            for (let i = 0; i < namePrompt.length; i++) {
+                if (!namePrompt[i].content || !namePrompt[i].content.trim()) {
+                    console.error(`generateChatName: Message at index ${i} has empty content!`);
+                    return 'New Chat';
+                }
+            }
+
+            // Validate that Generation module is available
+            if (!window.Generation || typeof window.Generation.streamGeneration !== 'function') {
+                console.warn('Generation module not available for chat naming');
+                return 'New Chat';
+            }
+
+            console.log('Sending name generation request with prompt:', JSON.stringify(namePrompt));
+
+            // Use the Generation module to get the name
+            let generatedName = '';
+            const result = await window.Generation.streamGeneration(namePrompt, (token) => {
+                generatedName += token;
+            }, app);
+
+            // Clean up the generated name (remove quotes, trim, limit length)
+            generatedName = generatedName.trim()
+                .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+                .replace(/\n/g, ' ') // Replace newlines with spaces
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .substring(0, 50); // Limit to 50 characters
+
+            console.log('Generated chat name:', generatedName);
+
+            // Return the generated name or a fallback
+            return generatedName || 'New Chat';
+        } catch (error) {
+            console.error('Failed to generate chat name:', error);
+            console.error('Error details:', error.message, error.stack);
+            return 'New Chat'; // Fallback to default
+        }
     }
 };
