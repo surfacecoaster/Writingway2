@@ -2215,9 +2215,10 @@
                                     <option value="balanced">Balanced</option>
                                     <option value="compressed">Compressed</option>
                                 </select>
-                                <button class="btn-icon" @click="useWorkshopContextPanel = !useWorkshopContextPanel"
-                                    :class="{ 'active': useWorkshopContextPanel }"
-                                    title="Use context from Context Panel" style="padding:6px 10px;font-size:14px;">
+                                <button class="btn btn-secondary"
+                                    @click="useWorkshopContextPanel = !useWorkshopContextPanel"
+                                    :style="useWorkshopContextPanel ? 'background: rgba(76,175,80,0.2); border-color: rgba(76,175,80,0.5);' : ''"
+                                    title="Use context from Context Panel">
                                     📚
                                 </button>
                             </div>
