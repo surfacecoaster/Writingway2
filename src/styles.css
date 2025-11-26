@@ -903,6 +903,10 @@ body {
     display: flex;
     flex-direction: column;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    /* Prevent the beat panel from shrinking */
+    overflow-y: auto;
+    /* Allow scrolling if content exceeds height */
 }
 
 .beat-panel h3 {
@@ -919,6 +923,8 @@ body {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
+    /* Prevent the group from expanding upward when textarea is resized */
+    align-items: flex-start;
 }
 
 /* Push beat controls to the bottom of the beat panel without extra spacing */
@@ -945,6 +951,8 @@ body {
     min-height: 56px;
     max-height: 480px;
     transition: border-color 0.2s ease, background 0.2s ease;
+    /* Prevent the textarea from pushing content above it when resizing */
+    align-self: flex-start;
 }
 
 /* Mirror overlay to render styled tokens above the textarea. The textarea's text is kept transparent so the mirror shows through. */
@@ -971,11 +979,18 @@ body {
 .beat-separator {
     height: 10px;
     background: transparent;
-    margin: 8px 30px;
+    margin: 0;
+    padding: 4px 30px;
     cursor: row-resize;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.beat-separator:hover {
+    background: rgba(74, 158, 255, 0.1);
 }
 
 .beat-separator::before {
@@ -986,6 +1001,12 @@ body {
     background: var(--border);
     border-radius: 2px;
     opacity: 0.9;
+    transition: background 0.2s;
+}
+
+.beat-separator:hover::before {
+    background: var(--accent);
+    opacity: 1;
 }
 
 /* Rewrite modal removed */

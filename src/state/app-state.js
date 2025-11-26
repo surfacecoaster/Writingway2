@@ -47,6 +47,7 @@ function createAppState() {
         showWorkshopChat: false,
         showEmbeddedWorkshop: false,
         workshopSplitterPosition: 50, // percentage
+        beatPanelHeight: 280, // pixels - height of the beat panel
         workshopSessions: [],
         currentWorkshopSessionIndex: 0,
         workshopInput: '',

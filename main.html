@@ -465,7 +465,14 @@
                 </div>
 
                 <!-- Editor -->
-                <div class="editor-container">
+                <div class="editor-container" x-data="{ beatSplitterDragging: false }"
+                    @mouseup.window="beatSplitterDragging = false" @mousemove.window="if (beatSplitterDragging) {
+                        const container = $el;
+                        const rect = container.getBoundingClientRect();
+                        const y = $event.clientY - rect.top;
+                        const newHeight = rect.height - y;
+                        beatPanelHeight = Math.max(150, Math.min(600, newHeight));
+                    }">
                     <div class="editor-header">
                         <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
                             <div class="editor-title" x-text="currentScene ? currentScene.title : 'No scene selected'">
@@ -687,8 +694,10 @@
                     </div>
 
                     <!-- Beat Panel -->
-                    <div class="beat-separator" aria-hidden="true"></div>
-                    <div class="beat-panel">
+                    <div class="beat-separator" aria-hidden="true"
+                        @mousedown="beatSplitterDragging = true; $event.preventDefault();"></div>
+                    <div class="beat-panel"
+                        :style="`height: ${beatPanelHeight}px; min-height: ${beatPanelHeight}px; max-height: ${beatPanelHeight}px;`">
                         <h3>Generate from Beat</h3>
                         <div class="beat-input-group" style="position:relative;">
                             <textarea class="beat-input" x-model="beatInput" @input="onBeatInput($event)"
