@@ -905,8 +905,8 @@ body {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
     /* Prevent the beat panel from shrinking */
-    overflow-y: auto;
-    /* Allow scrolling if content exceeds height */
+    overflow: hidden;
+    /* No scrolling - everything opens as modals */
 }
 
 .beat-panel h3 {

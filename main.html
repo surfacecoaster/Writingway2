@@ -820,310 +820,16 @@
                                 </button>
                             </div>
 
-                            <div class="scene-options" x-show="showSceneOptions"
-                                style="background:var(--bg-tertiary);padding:10px;border-radius:6px;border:1px solid var(--border);width:320px;">
-                                <label style="font-size:12px;color:var(--text-secondary);">POV CHARACTER
-                                    <input type="text" x-model="povCharacter" placeholder="e.g., Alice"
-                                        list="character-list" @blur="saveScene()" @keydown.enter.prevent="saveScene()"
-                                        style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
-                                    <datalist id="character-list">
-                                        <template
-                                            x-for="char in compendiumList.filter(c => c.category === 'characters')"
-                                            :key="char.id">
-                                            <option :value="char.title"></option>
-                                        </template>
-                                    </datalist>
-                                </label>
-
-                                <label style="font-size:12px;color:var(--text-secondary);">POV
-                                    <select x-model="pov" @change="saveScene()"
-                                        style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
-                                        <option>3rd person limited</option>
-                                        <option>1st person</option>
-                                        <option>omniscient</option>
-                                    </select>
-                                </label>
-
-                                <label style="font-size:12px;color:var(--text-secondary);">TENSE
-                                    <select x-model="tense" @change="saveScene()"
-                                        style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
-                                        <option value="past">past tense</option>
-                                        <option value="present">present tense</option>
-                                    </select>
-                                </label>
-
-                                <label style="font-size:12px;color:var(--text-secondary);">Prose Prompt
-                                    <select x-model="selectedProsePromptId"
-                                        @change="saveSelectedProsePrompt(selectedProsePromptId)"
-                                        style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
-                                        <option value="">Use current prompt (fallback)</option>
-                                        <template x-for="pr in prompts.filter(p => p.category === 'prose')"
-                                            :key="pr.id">
-                                            <option :value="pr.id" x-text="pr.title"></option>
-                                        </template>
-                                    </select>
-                                </label>
-
-                                <!-- Generation Settings -->
-                                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-                                    <div
-                                        style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">
-                                        Generation Settings
-                                    </div>
-
-                                    <!-- Model Selection -->
-                                    <label style="font-size:12px;color:var(--text-secondary);"
-                                        title="The AI model used for generation. Different models have different capabilities and costs.">
-                                        MODEL
-                                        <select x-model="aiModel" @change="saveGenerationParams()"
-                                            style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
-                                            <!-- API mode models -->
-                                            <template
-                                                x-for="model in (aiMode === 'api' ? (providerModels[aiProvider] || []) : [])"
-                                                :key="model.id">
-                                                <option :value="model.id"
-                                                    x-text="model.name + (model.recommended ? ' ⭐' : '')">
-                                                </option>
-                                            </template>
-                                            <!-- Local mode models -->
-                                            <template
-                                                x-for="modelName in (aiMode === 'local' ? availableLocalModels : [])"
-                                                :key="modelName">
-                                                <option :value="modelName" x-text="modelName"></option>
-                                            </template>
-                                            <!-- Show current model if not in lists -->
-                                            <option
-                                                x-show="aiModel && ((aiMode === 'api' && !(providerModels[aiProvider] || []).find(m => m.id === aiModel)) || (aiMode === 'local' && !availableLocalModels.includes(aiModel)))"
-                                                :value="aiModel" x-text="aiModel"></option>
-                                            <!-- Fallback for local mode with no models -->
-                                            <option
-                                                x-show="aiMode === 'local' && availableLocalModels.length === 0 && !aiModel"
-                                                value="" disabled>Local model (via llama-server)</option>
-                                        </select>
-                                    </label>
-
-                                    <!-- Temperature -->
-                                    <label
-                                        style="font-size:12px;color:var(--text-secondary);margin-top:12px;display:block;"
-                                        title="Controls randomness. Lower (0.3-0.6) = more focused and consistent. Higher (0.8-1.2) = more creative and varied.">
-                                        TEMPERATURE: <span x-text="temperature.toFixed(1)"></span>
-                                        <input type="range" x-model.number="temperature" min="0.1" max="1.5" step="0.1"
-                                            @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
-                                        <div
-                                            style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
-                                            <span>Focused</span>
-                                            <span>Balanced</span>
-                                            <span>Creative</span>
-                                        </div>
-                                    </label>
-
-                                    <!-- Max Tokens -->
-                                    <label
-                                        style="font-size:12px;color:var(--text-secondary);margin-top:12px;display:block;"
-                                        title="Maximum length of generated text. 100-200 = short paragraph, 300-500 = multiple paragraphs, 800-1500 = longer scenes, 2000-5000 = very long, 10000+ = thinking models with reasoning.">
-                                        MAX LENGTH: <span x-text="maxTokens"></span> tokens
-                                        <input type="range" x-model.number="maxTokens" min="100" max="20000" step="100"
-                                            @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
-                                        <div
-                                            style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
-                                            <span>Short</span>
-                                            <span>Medium</span>
-                                            <span>Very Long</span>
-                                        </div>
-                                    </label>
-
-                                    <!-- Quick link to full AI Settings -->
-                                    <button class="btn btn-secondary"
-                                        @click="showSceneOptions = false; showAISettings = true"
-                                        style="width:100%;margin-top:12px;font-size:11px;">
-                                        ⚙️ Advanced AI Settings
-                                    </button>
-                                </div>
+                            <div class="context-info">
+                                <span x-show="aiStatus === 'ready'">✓ AI ready • Will use current scene as
+                                    context</span>
+                                <span x-show="aiStatus === 'loading'">⏳ Loading model...</span>
+                                <span x-show="aiStatus === 'error'">⚠️ Model not loaded (using placeholder text for
+                                    now)</span>
                             </div>
 
-                            <!-- Standalone Context Panel -->
-                            <div class="scene-options" x-show="showContextPanel" x-data="{ allCompendiumEntries: [] }"
-                                x-init="$watch('showContextPanel', async (value) => { if (value) { allCompendiumEntries = await getAllCompendiumEntries(); } })"
-                                style="background:var(--bg-tertiary);padding:16px;border-radius:6px;border:1px solid var(--border);width:900px;max-width:95vw;max-height:600px;overflow-y:auto;">
-                                <div style="display:flex;flex-direction:column;gap:12px;">
-                                    <div>
-                                        <div
-                                            style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">
-                                            Scene Context Settings
-                                        </div>
-                                        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
-                                            Select what context to include in every generation prompt
-                                        </div>
-                                    </div>
-
-                                    <!-- Two Column Layout -->
-                                    <div style="display:flex;gap:16px;align-items:flex-start;">
-                                        <!-- Left Column: Compendium -->
-                                        <div style="flex:0 0 350px;display:flex;flex-direction:column;gap:12px;">
-                                            <!-- Compendium Entries Section -->
-                                            <div
-                                                style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;height:100%;">
-                                                <div
-                                                    style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
-                                                    📚 Compendium Entries
-                                                </div>
-                                                <div style="flex:1;overflow-y:auto;">
-                                                    <template x-if="allCompendiumEntries.length === 0">
-                                                        <div
-                                                            style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
-                                                            No compendium entries yet
-                                                        </div>
-                                                    </template>
-                                                    <template x-for="category in compendiumCategories" :key="category">
-                                                        <div x-show="allCompendiumEntries.filter(e => e.category === category).length > 0"
-                                                            style="margin-bottom:12px;">
-                                                            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;font-weight:600;"
-                                                                x-text="category"></div>
-                                                            <template
-                                                                x-for="entry in allCompendiumEntries.filter(e => e.category === category)"
-                                                                :key="entry.id">
-                                                                <label
-                                                                    style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:4px;font-size:13px;"
-                                                                    @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
-                                                                    @mouseleave="$el.style.background = 'transparent'">
-                                                                    <input type="checkbox"
-                                                                        :checked="contextPanel.compendiumIds.includes(entry.id)"
-                                                                        @change="toggleContextCompendium(entry.id)"
-                                                                        style="cursor:pointer;">
-                                                                    <span x-text="entry.title"></span>
-                                                                </label>
-                                                            </template>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Right Column: Scenes & Tags -->
-                                        <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
-                                            <!-- Scenes Section -->
-                                            <div
-                                                style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
-                                                <div
-                                                    style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
-                                                    📄 Scenes
-                                                </div>
-                                                <div style="max-height:300px;overflow-y:auto;">
-                                                    <template x-if="chapters.length === 0">
-                                                        <div
-                                                            style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
-                                                            No scenes yet
-                                                        </div>
-                                                    </template>
-                                                    <template x-for="chapter in chapters" :key="chapter.id">
-                                                        <div style="margin-bottom:16px;">
-                                                            <!-- Chapter Header -->
-                                                            <div
-                                                                style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:6px;background:var(--bg-tertiary);border-radius:4px;">
-                                                                <div style="font-size:13px;font-weight:600;"
-                                                                    x-text="chapter.title"></div>
-                                                                <div style="display:flex;gap:6px;">
-                                                                    <button
-                                                                        @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'full' ? null : 'full')"
-                                                                        :style="contextPanel.chapters[chapter.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
-                                                                        style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
-                                                                        title="Include full text of all scenes (click again to deselect)">
-                                                                        📄 Full Text
-                                                                    </button>
-                                                                    <button
-                                                                        @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'summary' ? null : 'summary')"
-                                                                        :style="contextPanel.chapters[chapter.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
-                                                                        style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
-                                                                        title="Include summaries of all scenes (click again to deselect)">
-                                                                        📝 Summary
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <!-- Scenes List -->
-                                                            <template x-for="scene in chapter.scenes" :key="scene.id">
-                                                                <div style="margin-left:16px;margin-bottom:4px;">
-                                                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;"
-                                                                        @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
-                                                                        @mouseleave="$el.style.background = 'transparent'">
-                                                                        <div
-                                                                            style="font-size:12px;display:flex;align-items:center;gap:6px;">
-                                                                            <span class="summary-dot"
-                                                                                :class="{ 'has': scene.summary && !scene.summaryStale, 'stale': scene.summaryStale, 'none': !scene.summary }"
-                                                                                style="width:8px;height:8px;"></span>
-                                                                            <span x-text="scene.title"></span>
-                                                                        </div>
-                                                                        <div style="display:flex;gap:4px;"
-                                                                            x-show="!contextPanel.chapters[chapter.id]">
-                                                                            <button
-                                                                                @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'full' ? null : 'full')"
-                                                                                :style="contextPanel.scenes[scene.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
-                                                                                style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;font-size:11px;cursor:pointer;transition:all 0.2s;"
-                                                                                title="Include full text (click again to deselect)">
-                                                                                Full
-                                                                            </button>
-                                                                            <button
-                                                                                @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'summary' ? null : 'summary')"
-                                                                                :style="contextPanel.scenes[scene.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
-                                                                                style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;font-size:11px;cursor:pointer;transition:all 0.2s;"
-                                                                                title="Include summary (click again to deselect)"
-                                                                                :disabled="!scene.summary">
-                                                                                Summary
-                                                                            </button>
-                                                                        </div>
-                                                                        <div style="font-size:10px;color:var(--text-tertiary);padding:2px 6px;"
-                                                                            x-show="contextPanel.chapters[chapter.id]"
-                                                                            x-text="'(via chapter: ' + contextPanel.chapters[chapter.id] + ')'">
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </template>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-
-                                            <!-- Tags Section -->
-                                            <div
-                                                style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
-                                                <div
-                                                    style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
-                                                    🏷️ Tags
-                                                </div>
-                                                <template x-if="getAllTags().length === 0">
-                                                    <div
-                                                        style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
-                                                        No tags yet. Add tags to scenes in their summary panel.
-                                                    </div>
-                                                </template>
-                                                <div x-show="getAllTags().length > 0"
-                                                    style="display:flex;flex-wrap:wrap;gap:8px;">
-                                                    <template x-for="tag in getAllTags()" :key="tag">
-                                                        <button @click="toggleContextTag(tag)"
-                                                            :style="contextPanel.tags.includes(tag) ? 'background:var(--accent);color:white;border-color:var(--accent);font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);border-color:var(--border);'"
-                                                            style="padding:8px 16px;border:2px solid;border-radius:16px;font-size:13px;cursor:pointer;transition:all 0.2s;font-weight:500;"
-                                                            @mouseenter="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--accent)'"
-                                                            @mouseleave="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--border)'"
-                                                            x-text="tag">
-                                                        </button>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="context-info">
-                            <span x-show="aiStatus === 'ready'">✓ AI ready • Will use current scene as context</span>
-                            <span x-show="aiStatus === 'loading'">⏳ Loading model...</span>
-                            <span x-show="aiStatus === 'error'">⚠️ Model not loaded (using placeholder text for
-                                now)</span>
-                        </div>
-
-                        <!-- Generation actions (accept/retry/discard) -->
-                        <div style="position:relative;padding:12px 30px 6px;">
-                            <div x-show="showGenActions" x-cloak
-                                style="position:absolute;right:30px;top:-12px;display:flex;gap:8px;">
+                            <!-- Generation actions (accept/retry/discard) -->
+                            <div x-show="showGenActions" x-cloak style="display:flex;gap:8px;justify-content:flex-end;">
                                 <button class="btn btn-primary" @click="acceptGeneration">Accept</button>
                                 <button class="btn btn-secondary" @click="retryGeneration">Retry</button>
                                 <button class="btn btn-secondary" @click="discardGeneration">Discard</button>
@@ -1132,6 +838,289 @@
                     </div>
                 </div>
             </div>
+        </template>
+
+        <!-- Rewrite Modal -->
+        <div x-show="showRewriteModal" x-cloak class="modal-overlay" @click.self="discardRewrite()">
+            <div class="rewrite-modal" @click.stop>
+                <div class="modal-header">
+                    <h3 style="margin:0;">Rewrite Selection</h3>
+                    <button class="btn btn-secondary" @click="discardRewrite()">Close</button>
+                </div>
+
+                <div class="modal-body">
+                    <label style="font-size:12px;color:var(--text-secondary);">POV CHARACTER
+                        <input type="text" x-model="povCharacter" placeholder="e.g., Alice" list="character-list"
+                            @blur="saveScene()" @keydown.enter.prevent="saveScene()"
+                            style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                        <datalist id="character-list">
+                            <template x-for="char in compendiumList.filter(c => c.category === 'characters')"
+                                :key="char.id">
+                                <option :value="char.title"></option>
+                            </template>
+                        </datalist>
+                    </label>
+
+                    <label style="font-size:12px;color:var(--text-secondary);">POV
+                        <select x-model="pov" @change="saveScene()"
+                            style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                            <option>3rd person limited</option>
+                            <option>1st person</option>
+                            <option>omniscient</option>
+                        </select>
+                    </label>
+
+                    <label style="font-size:12px;color:var(--text-secondary);">TENSE
+                        <select x-model="tense" @change="saveScene()"
+                            style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                            <option value="past">past tense</option>
+                            <option value="present">present tense</option>
+                        </select>
+                    </label>
+
+                    <label style="font-size:12px;color:var(--text-secondary);">Prose Prompt
+                        <select x-model="selectedProsePromptId" @change="saveSelectedProsePrompt(selectedProsePromptId)"
+                            style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                            <option value="">Use current prompt (fallback)</option>
+                            <template x-for="pr in prompts.filter(p => p.category === 'prose')" :key="pr.id">
+                                <option :value="pr.id" x-text="pr.title"></option>
+                            </template>
+                        </select>
+                    </label>
+
+                    <!-- Generation Settings -->
+                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">
+                            Generation Settings
+                        </div>
+
+                        <!-- Model Selection -->
+                        <label style="font-size:12px;color:var(--text-secondary);"
+                            title="The AI model used for generation. Different models have different capabilities and costs.">
+                            MODEL
+                            <select x-model="aiModel" @change="saveGenerationParams()"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                                <!-- API mode models -->
+                                <template x-for="model in (aiMode === 'api' ? (providerModels[aiProvider] || []) : [])"
+                                    :key="model.id">
+                                    <option :value="model.id" x-text="model.name + (model.recommended ? ' ⭐' : '')">
+                                    </option>
+                                </template>
+                                <!-- Local mode models -->
+                                <template x-for="modelName in (aiMode === 'local' ? availableLocalModels : [])"
+                                    :key="modelName">
+                                    <option :value="modelName" x-text="modelName"></option>
+                                </template>
+                                <!-- Show current model if not in lists -->
+                                <option
+                                    x-show="aiModel && ((aiMode === 'api' && !(providerModels[aiProvider] || []).find(m => m.id === aiModel)) || (aiMode === 'local' && !availableLocalModels.includes(aiModel)))"
+                                    :value="aiModel" x-text="aiModel"></option>
+                                <!-- Fallback for local mode with no models -->
+                                <option x-show="aiMode === 'local' && availableLocalModels.length === 0 && !aiModel"
+                                    value="" disabled>Local model (via llama-server)</option>
+                            </select>
+                        </label>
+
+                        <!-- Temperature -->
+                        <label style="font-size:12px;color:var(--text-secondary);margin-top:12px;display:block;"
+                            title="Controls randomness. Lower (0.3-0.6) = more focused and consistent. Higher (0.8-1.2) = more creative and varied.">
+                            TEMPERATURE: <span x-text="temperature.toFixed(1)"></span>
+                            <input type="range" x-model.number="temperature" min="0.1" max="1.5" step="0.1"
+                                @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
+                            <div
+                                style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
+                                <span>Focused</span>
+                                <span>Balanced</span>
+                                <span>Creative</span>
+                            </div>
+                        </label>
+
+                        <!-- Max Tokens -->
+                        <label style="font-size:12px;color:var(--text-secondary);margin-top:12px;display:block;"
+                            title="Maximum length of generated text. 100-200 = short paragraph, 300-500 = multiple paragraphs, 800-1500 = longer scenes, 2000-5000 = very long, 10000+ = thinking models with reasoning.">
+                            MAX LENGTH: <span x-text="maxTokens"></span> tokens
+                            <input type="range" x-model.number="maxTokens" min="100" max="20000" step="100"
+                                @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
+                            <div
+                                style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
+                                <span>Short</span>
+                                <span>Medium</span>
+                                <span>Very Long</span>
+                            </div>
+                        </label>
+
+                        <!-- Quick link to full AI Settings -->
+                        <button class="btn btn-secondary" @click="showSceneOptions = false; showAISettings = true"
+                            style="width:100%;margin-top:12px;font-size:11px;">
+                            ⚙️ Advanced AI Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+            x-init="$watch('showContextPanel', async (value) => { if (value) { allCompendiumEntries = await
+            getAllCompendiumEntries(); } })"
+            style="background:var(--bg-tertiary);padding:16px;border-radius:6px;border:1px solid
+            var(--border);width:900px;max-width:95vw;max-height:600px;overflow-y:auto;">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">
+                        Scene Context Settings
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                        Select what context to include in every generation prompt
+                    </div>
+                </div>
+
+                <!-- Two Column Layout -->
+                <div style="display:flex;gap:16px;align-items:flex-start;">
+                    <!-- Left Column: Compendium -->
+                    <div style="flex:0 0 350px;display:flex;flex-direction:column;gap:12px;">
+                        <!-- Compendium Entries Section -->
+                        <div
+                            style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;height:100%;">
+                            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                📚 Compendium Entries
+                            </div>
+                            <div style="flex:1;overflow-y:auto;">
+                                <template x-if="allCompendiumEntries.length === 0">
+                                    <div
+                                        style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                        No compendium entries yet
+                                    </div>
+                                </template>
+                                <template x-for="category in compendiumCategories" :key="category">
+                                    <div x-show="allCompendiumEntries.filter(e => e.category === category).length > 0"
+                                        style="margin-bottom:12px;">
+                                        <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;font-weight:600;"
+                                            x-text="category"></div>
+                                        <template
+                                            x-for="entry in allCompendiumEntries.filter(e => e.category === category)"
+                                            :key="entry.id">
+                                            <label
+                                                style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:4px;font-size:13px;"
+                                                @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
+                                                @mouseleave="$el.style.background = 'transparent'">
+                                                <input type="checkbox"
+                                                    :checked="contextPanel.compendiumIds.includes(entry.id)"
+                                                    @change="toggleContextCompendium(entry.id)" style="cursor:pointer;">
+                                                <span x-text="entry.title"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Scenes & Tags -->
+                    <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+                        <!-- Scenes Section -->
+                        <div
+                            style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                📄 Scenes
+                            </div>
+                            <div style="max-height:300px;overflow-y:auto;">
+                                <template x-if="chapters.length === 0">
+                                    <div
+                                        style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                        No scenes yet
+                                    </div>
+                                </template>
+                                <template x-for="chapter in chapters" :key="chapter.id">
+                                    <div style="margin-bottom:16px;">
+                                        <!-- Chapter Header -->
+                                        <div
+                                            style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:6px;background:var(--bg-tertiary);border-radius:4px;">
+                                            <div style="font-size:13px;font-weight:600;" x-text="chapter.title">
+                                            </div>
+                                            <div style="display:flex;gap:6px;">
+                                                <button
+                                                    @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'full' ? null : 'full')"
+                                                    :style="contextPanel.chapters[chapter.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                    style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
+                                                    title="Include full text of all scenes (click again to deselect)">
+                                                    📄 Full Text
+                                                </button>
+                                                <button
+                                                    @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'summary' ? null : 'summary')"
+                                                    :style="contextPanel.chapters[chapter.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                    style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
+                                                    title="Include summaries of all scenes (click again to deselect)">
+                                                    📝 Summary
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <!-- Scenes List -->
+                                        <template x-for="scene in chapter.scenes" :key="scene.id">
+                                            <div style="margin-left:16px;margin-bottom:4px;">
+                                                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;"
+                                                    @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
+                                                    @mouseleave="$el.style.background = 'transparent'">
+                                                    <div
+                                                        style="font-size:12px;display:flex;align-items:center;gap:6px;">
+                                                        <span class="summary-dot"
+                                                            :class="{ 'has': scene.summary && !scene.summaryStale, 'stale': scene.summaryStale, 'none': !scene.summary }"
+                                                            style="width:8px;height:8px;"></span>
+                                                        <span x-text="scene.title"></span>
+                                                    </div>
+                                                    <div style="display:flex;gap:4px;"
+                                                        x-show="!contextPanel.chapters[chapter.id]">
+                                                        <button
+                                                            @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'full' ? null : 'full')"
+                                                            :style="contextPanel.scenes[scene.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                            style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;font-size:11px;cursor:pointer;transition:all 0.2s;"
+                                                            title="Include full text (click again to deselect)">
+                                                            Full
+                                                        </button>
+                                                        <button
+                                                            @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'summary' ? null : 'summary')"
+                                                            :style="contextPanel.scenes[scene.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                            style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;font-size:11px;cursor:pointer;transition:all 0.2s;"
+                                                            title="Include summary (click again to deselect)"
+                                                            :disabled="!scene.summary">
+                                                            Summary
+                                                        </button>
+                                                    </div>
+                                                    <div style="font-size:10px;color:var(--text-tertiary);padding:2px 6px;"
+                                                        x-show="contextPanel.chapters[chapter.id]"
+                                                        x-text="'(via chapter: ' + contextPanel.chapters[chapter.id] + ')'">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Tags Section -->
+                        <div
+                            style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                🏷️ Tags
+                            </div>
+                            <template x-if="getAllTags().length === 0">
+                                <div style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                    No tags yet. Add tags to scenes in their summary panel.
+                                </div>
+                            </template>
+                            <div x-show="getAllTags().length > 0" style="display:flex;flex-wrap:wrap;gap:8px;">
+                                <template x-for="tag in getAllTags()" :key="tag">
+                                    <button @click="toggleContextTag(tag)"
+                                        :style="contextPanel.tags.includes(tag) ? 'background:var(--accent);color:white;border-color:var(--accent);font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);border-color:var(--border);'"
+                                        style="padding:8px 16px;border:2px solid;border-radius:16px;font-size:13px;cursor:pointer;transition:all 0.2s;font-weight:500;"
+                                        @mouseenter="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--accent)'"
+                                        @mouseleave="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--border)'"
+                                        x-text="tag">
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </template>
 
         <!-- Rewrite Modal -->
@@ -1700,7 +1689,8 @@
                     <h4 style="margin:0 0 12px 0;color:var(--text-primary);">Setup Instructions</h4>
                     <ol style="margin:0;padding-left:20px;line-height:1.8;font-size:14px;">
                         <li>Go to <a href="https://github.com/settings/tokens" target="_blank"
-                                style="color:#4a9eff;">GitHub Settings → Developer settings → Personal access tokens</a>
+                                style="color:#4a9eff;">GitHub
+                                Settings → Developer settings → Personal access tokens</a>
                         </li>
                         <li>Click "Generate new token (classic)"</li>
                         <li>Give it a name (e.g., "Writingway Backup")</li>
@@ -2250,6 +2240,307 @@
                             @click="window.open(updateAvailable.url, '_blank'); showUpdateDialog = false;">
                             👉 View Release on GitHub
                         </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Scene Options Modal -->
+        <template x-if="showSceneOptions">
+            <div class="modal-overlay" @click.self="showSceneOptions = false">
+                <div class="modal" style="max-width:400px;max-height:90vh;overflow-y:auto;">
+                    <div class="modal-header">
+                        <h3 style="margin:0;">Scene Options</h3>
+                        <button class="btn btn-secondary" @click="showSceneOptions = false">Close</button>
+                    </div>
+                    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+                        <label style="font-size:12px;color:var(--text-secondary);">POV CHARACTER
+                            <input type="text" x-model="povCharacter" placeholder="e.g., Alice" list="character-list"
+                                @blur="saveScene()" @keydown.enter.prevent="saveScene()"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                            <datalist id="character-list">
+                                <template x-for="char in compendiumList.filter(c => c.category === 'characters')"
+                                    :key="char.id">
+                                    <option :value="char.title"></option>
+                                </template>
+                            </datalist>
+                        </label>
+
+                        <label style="font-size:12px;color:var(--text-secondary);">POV
+                            <select x-model="pov" @change="saveScene()"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                                <option>3rd person limited</option>
+                                <option>1st person</option>
+                                <option>omniscient</option>
+                            </select>
+                        </label>
+
+                        <label style="font-size:12px;color:var(--text-secondary);">TENSE
+                            <select x-model="tense" @change="saveScene()"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                                <option value="past">past tense</option>
+                                <option value="present">present tense</option>
+                            </select>
+                        </label>
+
+                        <label style="font-size:12px;color:var(--text-secondary);">Prose Prompt
+                            <select x-model="selectedProsePromptId"
+                                @change="saveSelectedProsePrompt(selectedProsePromptId)"
+                                style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                                <option value="">Use current prompt (fallback)</option>
+                                <template x-for="pr in prompts.filter(p => p.category === 'prose')" :key="pr.id">
+                                    <option :value="pr.id" x-text="pr.title"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                        <!-- Generation Settings -->
+                        <div style="padding-top:16px;border-top:1px solid var(--border);">
+                            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">
+                                Generation Settings
+                            </div>
+
+                            <!-- Model Selection -->
+                            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:12px;"
+                                title="The AI model used for generation. Different models have different capabilities and costs.">
+                                MODEL
+                                <select x-model="aiModel" @change="saveGenerationParams()"
+                                    style="width:100%;margin-top:6px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                                    <!-- API mode models -->
+                                    <template
+                                        x-for="model in (aiMode === 'api' ? (providerModels[aiProvider] || []) : [])"
+                                        :key="model.id">
+                                        <option :value="model.id" x-text="model.name + (model.recommended ? ' ⭐' : '')">
+                                        </option>
+                                    </template>
+                                    <!-- Local mode models -->
+                                    <template x-for="modelName in (aiMode === 'local' ? availableLocalModels : [])"
+                                        :key="modelName">
+                                        <option :value="modelName" x-text="modelName"></option>
+                                    </template>
+                                    <!-- Show current model if not in lists -->
+                                    <option
+                                        x-show="aiModel && ((aiMode === 'api' && !(providerModels[aiProvider] || []).find(m => m.id === aiModel)) || (aiMode === 'local' && !availableLocalModels.includes(aiModel)))"
+                                        :value="aiModel" x-text="aiModel"></option>
+                                    <!-- Fallback for local mode with no models -->
+                                    <option x-show="aiMode === 'local' && availableLocalModels.length === 0 && !aiModel"
+                                        value="" disabled>Local model (via llama-server)</option>
+                                </select>
+                            </label>
+
+                            <!-- Temperature -->
+                            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:12px;"
+                                title="Controls randomness. Lower (0.3-0.6) = more focused and consistent. Higher (0.8-1.2) = more creative and varied.">
+                                TEMPERATURE: <span x-text="temperature.toFixed(1)"></span>
+                                <input type="range" x-model.number="temperature" min="0.1" max="1.5" step="0.1"
+                                    @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
+                                    <span>Focused</span>
+                                    <span>Balanced</span>
+                                    <span>Creative</span>
+                                </div>
+                            </label>
+
+                            <!-- Max Tokens -->
+                            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:12px;"
+                                title="Maximum length of generated text. 100-200 = short paragraph, 300-500 = multiple paragraphs, 800-1500 = longer scenes, 2000-5000 = very long, 10000+ = thinking models with reasoning.">
+                                MAX LENGTH: <span x-text="maxTokens"></span> tokens
+                                <input type="range" x-model.number="maxTokens" min="100" max="20000" step="100"
+                                    @input="saveGenerationParams()" style="width:100%;margin-top:6px;">
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px;">
+                                    <span>Short</span>
+                                    <span>Medium</span>
+                                    <span>Very Long</span>
+                                </div>
+                            </label>
+
+                            <!-- Quick link to full AI Settings -->
+                            <button class="btn btn-secondary" @click="showSceneOptions = false; showAISettings = true"
+                                style="width:100%;font-size:11px;">
+                                ⚙️ Advanced AI Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Context Panel Modal -->
+        <template x-if="showContextPanel">
+            <div class="modal-overlay" @click.self="showContextPanel = false">
+                <div class="modal" x-data="{ allCompendiumEntries: [] }"
+                    x-init="$watch('showContextPanel', async (value) => { if (value) { allCompendiumEntries = await getAllCompendiumEntries(); } })"
+                    style="max-width:1000px;max-height:90vh;overflow-y:auto;">
+                    <div class="modal-header">
+                        <h3 style="margin:0;">Context Panel</h3>
+                        <button class="btn btn-secondary" @click="showContextPanel = false">Close</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                            <div>
+                                <div
+                                    style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">
+                                    Scene Context Settings
+                                </div>
+                                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">
+                                    Select what context to include in every generation prompt
+                                </div>
+                            </div>
+
+                            <!-- Two Column Layout -->
+                            <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+                                <!-- Left Column: Compendium -->
+                                <div
+                                    style="flex:0 0 350px;min-width:300px;display:flex;flex-direction:column;gap:12px;">
+                                    <!-- Compendium Entries Section -->
+                                    <div
+                                        style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;height:100%;">
+                                        <div
+                                            style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                            📚 Compendium Entries
+                                        </div>
+                                        <div style="flex:1;overflow-y:auto;max-height:400px;">
+                                            <template x-if="allCompendiumEntries.length === 0">
+                                                <div
+                                                    style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                                    No compendium entries yet
+                                                </div>
+                                            </template>
+                                            <template x-for="category in compendiumCategories" :key="category">
+                                                <div x-show="allCompendiumEntries.filter(e => e.category === category).length > 0"
+                                                    style="margin-bottom:12px;">
+                                                    <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;font-weight:600;"
+                                                        x-text="category"></div>
+                                                    <template
+                                                        x-for="entry in allCompendiumEntries.filter(e => e.category === category)"
+                                                        :key="entry.id">
+                                                        <label
+                                                            style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:4px;font-size:13px;"
+                                                            @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
+                                                            @mouseleave="$el.style.background = 'transparent'">
+                                                            <input type="checkbox"
+                                                                :checked="contextPanel.compendiumIds.includes(entry.id)"
+                                                                @change="toggleContextCompendium(entry.id)"
+                                                                style="cursor:pointer;">
+                                                            <span x-text="entry.title"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Scenes & Tags -->
+                                <div style="flex:1;min-width:400px;display:flex;flex-direction:column;gap:12px;">
+                                    <!-- Scenes Section -->
+                                    <div
+                                        style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                                        <div
+                                            style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                            📄 Scenes
+                                        </div>
+                                        <div style="max-height:300px;overflow-y:auto;">
+                                            <template x-if="chapters.length === 0">
+                                                <div
+                                                    style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                                    No scenes yet
+                                                </div>
+                                            </template>
+                                            <template x-for="chapter in chapters" :key="chapter.id">
+                                                <div style="margin-bottom:16px;">
+                                                    <!-- Chapter Header -->
+                                                    <div
+                                                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:6px;background:var(--bg-tertiary);border-radius:4px;">
+                                                        <div style="font-size:13px;font-weight:600;"
+                                                            x-text="chapter.title">
+                                                        </div>
+                                                        <div style="display:flex;gap:6px;">
+                                                            <button
+                                                                @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'full' ? null : 'full')"
+                                                                :style="contextPanel.chapters[chapter.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                                style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
+                                                                title="Include full text of all scenes (click again to deselect)">
+                                                                📄 Full Text
+                                                            </button>
+                                                            <button
+                                                                @click="setContextChapter(chapter.id, contextPanel.chapters[chapter.id] === 'summary' ? null : 'summary')"
+                                                                :style="contextPanel.chapters[chapter.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                                style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;transition:all 0.2s;"
+                                                                title="Include summaries of all scenes (click again to deselect)">
+                                                                📝 Summary
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Scenes List -->
+                                                    <template x-for="scene in chapter.scenes" :key="scene.id">
+                                                        <div style="margin-left:16px;margin-bottom:4px;">
+                                                            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;"
+                                                                @mouseenter="$el.style.background = 'var(--bg-tertiary)'"
+                                                                @mouseleave="$el.style.background = 'transparent'">
+                                                                <div
+                                                                    style="font-size:12px;display:flex;align-items:center;gap:6px;">
+                                                                    <span class="summary-dot"
+                                                                        :class="{ 'has-summary': scene.summary, 'summary-stale': scene.summaryStale }"
+                                                                        :title="scene.summary ? (scene.summaryStale ? 'Summary is outdated' : 'Summary available') : 'No summary'"></span>
+                                                                    <span x-text="scene.title"></span>
+                                                                </div>
+                                                                <div style="display:flex;gap:6px;">
+                                                                    <button
+                                                                        @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'full' ? null : 'full')"
+                                                                        :style="contextPanel.scenes[scene.id] === 'full' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                                        style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;transition:all 0.2s;"
+                                                                        title="Include full text">
+                                                                        📄
+                                                                    </button>
+                                                                    <button
+                                                                        @click="setContextScene(scene.id, contextPanel.scenes[scene.id] === 'summary' ? null : 'summary')"
+                                                                        :style="contextPanel.scenes[scene.id] === 'summary' ? 'background:var(--accent);color:white;font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);'"
+                                                                        style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;transition:all 0.2s;"
+                                                                        title="Include summary"
+                                                                        :disabled="!scene.summary">
+                                                                        📝
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tags Section -->
+                                    <div
+                                        style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                                        <div
+                                            style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                            🏷️ Tags
+                                        </div>
+                                        <template x-if="getAllTags().length === 0">
+                                            <div
+                                                style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                                No tags yet. Add tags to scenes in their summary panel.
+                                            </div>
+                                        </template>
+                                        <div x-show="getAllTags().length > 0"
+                                            style="display:flex;flex-wrap:wrap;gap:8px;">
+                                            <template x-for="tag in getAllTags()" :key="tag">
+                                                <button @click="toggleContextTag(tag)"
+                                                    :style="contextPanel.tags.includes(tag) ? 'background:var(--accent);color:white;border-color:var(--accent);font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);border-color:var(--border);'"
+                                                    style="padding:8px 16px;border:2px solid;border-radius:16px;font-size:13px;cursor:pointer;transition:all 0.2s;font-weight:500;"
+                                                    @mouseenter="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--accent)'"
+                                                    @mouseleave="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--border)'"
+                                                    x-text="tag">
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
