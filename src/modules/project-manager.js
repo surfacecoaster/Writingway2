@@ -402,7 +402,15 @@
                 const blob = await zip.generateAsync({ type: 'blob' });
                 // Only remove filesystem-unsafe characters, keep Unicode (Cyrillic, etc.)
                 const nameSafe = (app.currentProject.name || 'project').replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').slice(0, 80).trim();
-                const fname = `${nameSafe || 'writingway_project'}.zip`;
+                // Add timestamp to filename: Project-2025-Nov-27-14-44.zip
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.toLocaleString('en', { month: 'short' });
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day}-${hours}-${minutes}`;
+                const fname = `${nameSafe || 'writingway_project'}-${timestamp}.zip`;
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
@@ -451,7 +459,15 @@
 
                 const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
                 const nameSafe = (app.currentProject.name || 'project').replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').slice(0, 80).trim();
-                const fname = `${nameSafe || 'writingway_project'}.txt`;
+                // Add timestamp to filename
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.toLocaleString('en', { month: 'short' });
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day}-${hours}-${minutes}`;
+                const fname = `${nameSafe || 'writingway_project'}-${timestamp}.txt`;
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
@@ -567,7 +583,15 @@
 
                 const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                 const nameSafe = (app.currentProject.name || 'project').replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').slice(0, 80).trim();
-                const fname = `${nameSafe || 'writingway_project'}.html`;
+                // Add timestamp to filename
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.toLocaleString('en', { month: 'short' });
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day}-${hours}-${minutes}`;
+                const fname = `${nameSafe || 'writingway_project'}-${timestamp}.html`;
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
@@ -757,7 +781,15 @@ p:first-of-type {
                     compression: 'DEFLATE'
                 });
 
-                const fname = `${nameSafe || 'writingway_project'}.epub`;
+                // Add timestamp to filename
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.toLocaleString('en', { month: 'short' });
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day}-${hours}-${minutes}`;
+                const fname = `${nameSafe || 'writingway_project'}-${timestamp}.epub`;
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
