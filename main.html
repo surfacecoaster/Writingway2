@@ -1482,17 +1482,18 @@
                         <label
                             style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">Provider</label>
                         <select x-model="aiProvider"
-                            @change="aiModel = (providerModels[aiProvider] && providerModels[aiProvider].length > 0) ? providerModels[aiProvider].find(m => m.recommended)?.id || providerModels[aiProvider][0].id : ''; modelsFetched = false;"
+                            @change="aiModel = (providerModels[aiProvider] && providerModels[aiProvider].length > 0) ? providerModels[aiProvider].find(m => m.recommended)?.id || providerModels[aiProvider][0].id : ''; modelsFetched = false; if (aiProvider === 'lmstudio') { aiEndpoint = aiEndpoint || 'http://localhost:1234'; fetchProviderModels(); }"
                             style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:6px;">
                             <option value="openrouter">OpenRouter (Multi-model, has free options)</option>
                             <option value="anthropic">Anthropic (Claude)</option>
                             <option value="openai">OpenAI (GPT)</option>
                             <option value="google">Google AI (Gemini)</option>
+                            <option value="lmstudio">LM Studio (Local Server)</option>
                             <option value="custom">Custom API Endpoint</option>
                         </select>
                     </div>
 
-                    <div style="margin-bottom:16px;">
+                    <div x-show="aiProvider !== 'lmstudio'" style="margin-bottom:16px;">
                         <label
                             style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">API
                             Key</label>
@@ -1514,12 +1515,25 @@
                         </p>
                     </div>
 
+                    <!-- LM Studio info box -->
+                    <div x-show="aiProvider === 'lmstudio'" style="margin-bottom:16px;background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-radius:8px;padding:12px;">
+                        <p style="margin:0;font-size:13px;color:var(--text-primary);">
+                            <strong>🖥️ LM Studio Setup</strong>
+                        </p>
+                        <p style="margin:8px 0 0 0;font-size:12px;color:var(--text-secondary);line-height:1.5;">
+                            1. Open LM Studio and load a model<br>
+                            2. Start the local server (Local Server tab → Start Server)<br>
+                            3. Click "Refresh" below to fetch available models<br>
+                            No API key needed!
+                        </p>
+                    </div>
+
                     <div style="margin-bottom:16px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                             <label
                                 style="display:block;font-size:13px;font-weight:600;color:var(--text-primary);">Model</label>
                             <button class="btn btn-secondary" @click="fetchProviderModels()"
-                                :disabled="!aiApiKey || fetchingModels" style="font-size:11px;padding:4px 8px;"
+                                :disabled="(aiProvider !== 'lmstudio' && !aiApiKey) || fetchingModels" style="font-size:11px;padding:4px 8px;"
                                 title="Refresh available models from provider">
                                 <span x-show="!fetchingModels">🔄 Refresh</span>
                                 <span x-show="fetchingModels">⏳ Loading...</span>
@@ -1541,8 +1555,12 @@
                             ✓ Model list updated from provider
                         </p>
                         <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;"
-                            x-show="!aiApiKey && aiMode === 'api'">
+                            x-show="!aiApiKey && aiMode === 'api' && aiProvider !== 'lmstudio'">
                             ℹ️ Enter API key above to see available models
+                        </p>
+                        <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;"
+                            x-show="aiProvider === 'lmstudio' && !modelsFetched && providerModels.lmstudio.length === 0">
+                            ℹ️ Click Refresh to fetch models from LM Studio
                         </p>
                     </div>
 
@@ -1559,6 +1577,18 @@
                             Enable this if your model doesn't support streaming or returns empty responses. Most
                             thinking models (o1, o3, reasoning models) are auto-detected, but use this for any others
                             that need it.
+                        </p>
+                    </div>
+
+                    <div x-show="aiProvider === 'lmstudio'" style="margin-bottom:16px;">
+                        <label
+                            style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">LM Studio Server URL</label>
+                        <input type="text" x-model="aiEndpoint"
+                            placeholder="http://localhost:1234"
+                            @change="fetchProviderModels()"
+                            style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:6px;">
+                        <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;">
+                            Default: http://localhost:1234. Change if running on a different machine (e.g., http://192.168.1.164:1234)
                         </p>
                     </div>
 

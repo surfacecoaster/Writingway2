@@ -324,6 +324,23 @@
                     maxOutputTokens: maxTok
                 };
             }
+        } else if (provider === 'lmstudio') {
+            // LM Studio uses OpenAI-compatible API
+            const endpoint = customEndpoint || 'http://localhost:1234';
+            url = `${endpoint}/v1/chat/completions`;
+            headers = {
+                'Content-Type': 'application/json'
+            };
+            body = {
+                model: model,
+                messages: messages,
+                stream: true
+            };
+            // Only include temperature/max_tokens if not using provider defaults
+            if (!useProviderDefaults) {
+                body.temperature = temp;
+                body.max_tokens = maxTok;
+            }
         } else if (provider === 'custom') {
             url = customEndpoint;
             headers = {
@@ -376,7 +393,7 @@
             // Extract content and finish_reason from non-streaming response
             let content = null;
             let finishReason = null;
-            if (provider === 'openrouter' || provider === 'openai' || provider === 'custom') {
+            if (provider === 'openrouter' || provider === 'openai' || provider === 'lmstudio' || provider === 'custom') {
                 content = data.choices?.[0]?.message?.content;
                 finishReason = data.choices?.[0]?.finish_reason;
 
@@ -452,7 +469,7 @@
 
                     // Extract token based on provider format
                     let token = null;
-                    if (provider === 'openrouter' || provider === 'openai' || provider === 'custom') {
+                    if (provider === 'openrouter' || provider === 'openai' || provider === 'lmstudio' || provider === 'custom') {
                         // Capture finish_reason if present
                         if (data.choices?.[0]?.finish_reason) {
                             finishReason = data.choices[0].finish_reason;

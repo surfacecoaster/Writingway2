@@ -8,7 +8,8 @@
          */
         async fetchProviderModels(app) {
             // Fetch available models from the current provider
-            if (app.aiMode !== 'api' || !app.aiApiKey) return;
+            // LM Studio doesn't require an API key
+            if (app.aiMode !== 'api' || (!app.aiApiKey && app.aiProvider !== 'lmstudio')) return;
             if (app.fetchingModels) return; // Prevent duplicate fetches
 
             try {
@@ -71,6 +72,34 @@
                     // Google AI doesn't have a public models list API for free tier
                     // Keep hardcoded list
                     app.modelsFetched = true;
+                } else if (app.aiProvider === 'lmstudio') {
+                    // LM Studio uses OpenAI-compatible API at /v1/models
+                    const endpoint = app.aiEndpoint || 'http://localhost:1234';
+                    try {
+                        const response = await fetch(`${endpoint}/v1/models`, {
+                            signal: AbortSignal.timeout(5000)
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            // LM Studio returns models in OpenAI format
+                            app.providerModels.lmstudio = (data.data || [])
+                                .filter(m => m.id)
+                                .map((m, idx) => ({
+                                    id: m.id,
+                                    name: m.id,
+                                    recommended: idx === 0 // First model as recommended
+                                }));
+                            app.modelsFetched = true;
+                            // Auto-select first model if none selected
+                            if (!app.aiModel && app.providerModels.lmstudio.length > 0) {
+                                app.aiModel = app.providerModels.lmstudio[0].id;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Failed to fetch LM Studio models:', e);
+                        // Keep empty list - user will need to ensure LM Studio is running
+                        app.modelsFetched = true;
+                    }
                 }
             } catch (e) {
                 console.error('Failed to fetch models:', e);
@@ -201,12 +230,55 @@
                         const elapsed = Math.floor((attempt * retryDelay) / 1000);
                         throw new Error(`Could not connect to local server after ${elapsed}s. Make sure llama.cpp server is running and the model is loaded. Large models can take several minutes to load - you may need to wait and try again.`);
                     }
+                } else if (app.aiProvider === 'lmstudio') {
+                    // Test LM Studio connection via /v1/models endpoint
+                    const endpoint = app.aiEndpoint || 'http://localhost:1234';
+                    app.loadingMessage = 'Connecting to LM Studio...';
+
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+                        const response = await fetch(`${endpoint}/v1/models`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Update model list
+                            app.providerModels.lmstudio = (data.data || [])
+                                .filter(m => m.id)
+                                .map((m, idx) => ({
+                                    id: m.id,
+                                    name: m.id,
+                                    recommended: idx === 0
+                                }));
+                            
+                            // Auto-select first model if none selected
+                            if (!app.aiModel && app.providerModels.lmstudio.length > 0) {
+                                app.aiModel = app.providerModels.lmstudio[0].id;
+                            }
+
+                            const modelCount = app.providerModels.lmstudio.length;
+                            app.aiStatus = 'ready';
+                            app.aiStatusText = `AI Ready (LM Studio)`;
+                            app.loadingProgress = 100;
+                            app.loadingMessage = 'Connected!';
+                            setTimeout(() => { app.showModelLoading = false; }, 500);
+                            alert(`✓ Connected to LM Studio! Found ${modelCount} model(s).`);
+                        } else {
+                            throw new Error(`LM Studio returned status ${response.status}`);
+                        }
+                    } catch (err) {
+                        throw new Error(`Could not connect to LM Studio at ${endpoint}. Make sure LM Studio is running and has a model loaded. Error: ${err.message}`);
+                    }
                 } else {
                     // Test API connection (basic validation)
-                    if (!app.aiApiKey) {
+                    if (!app.aiApiKey && app.aiProvider !== 'lmstudio') {
                         throw new Error('API key is required');
                     }
-                    if (!app.aiModel) {
+                    if (!app.aiModel && app.aiProvider !== 'lmstudio') {
                         throw new Error('Model name is required');
                     }
 
