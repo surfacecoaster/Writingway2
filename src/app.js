@@ -821,6 +821,27 @@ document.addEventListener('alpine:init', () => {
                 return Array.from(tagsSet).sort();
             },
 
+            // Get all unique tags from compendium entries in the current project
+            async getCompendiumTags() {
+                const tagsSet = new Set();
+                if (!this.currentProject) return [];
+                try {
+                    const entries = await db.compendium.where('projectId').equals(this.currentProject.id).toArray();
+                    (entries || []).forEach(entry => {
+                        if (entry.tags && Array.isArray(entry.tags)) {
+                            entry.tags.forEach(tag => {
+                                if (tag && tag.trim()) {
+                                    tagsSet.add(tag.trim());
+                                }
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Failed to get compendium tags:', e);
+                }
+                return Array.from(tagsSet).sort();
+            },
+
             // Context Panel Management
             toggleContextCompendium(entryId) {
                 const index = this.contextPanel.compendiumIds.indexOf(entryId);
@@ -862,6 +883,20 @@ document.addEventListener('alpine:init', () => {
                 this.saveContextPanel();
             },
 
+            toggleContextCompendiumTag(tag) {
+                // Ensure compendiumTags array exists (for backwards compatibility)
+                if (!this.contextPanel.compendiumTags) {
+                    this.contextPanel.compendiumTags = [];
+                }
+                const index = this.contextPanel.compendiumTags.indexOf(tag);
+                if (index > -1) {
+                    this.contextPanel.compendiumTags.splice(index, 1);
+                } else {
+                    this.contextPanel.compendiumTags.push(tag);
+                }
+                this.saveContextPanel();
+            },
+
             saveContextPanel() {
                 if (!this.currentProject) return;
                 try {
@@ -879,13 +914,18 @@ document.addEventListener('alpine:init', () => {
                     const saved = localStorage.getItem(key);
                     if (saved) {
                         this.contextPanel = JSON.parse(saved);
+                        // Ensure compendiumTags exists (backwards compatibility)
+                        if (!this.contextPanel.compendiumTags) {
+                            this.contextPanel.compendiumTags = [];
+                        }
                     } else {
                         // Reset to default
                         this.contextPanel = {
                             compendiumIds: [],
                             chapters: {},
                             scenes: {},
-                            tags: []
+                            tags: [],
+                            compendiumTags: []
                         };
                     }
                 } catch (e) {
@@ -894,7 +934,8 @@ document.addEventListener('alpine:init', () => {
                         compendiumIds: [],
                         chapters: {},
                         scenes: {},
-                        tags: []
+                        tags: [],
+                        compendiumTags: []
                     };
                 }
             },

@@ -44,11 +44,15 @@
 
             if (!app.currentProject) return context;
 
-            // 1. Add compendium entries from context panel
+            // Track processed compendium entries to avoid duplicates
+            const processedCompendium = new Set();
+
+            // 1. Add compendium entries from context panel (by ID)
             for (const entryId of app.contextPanel.compendiumIds) {
                 try {
                     const entry = await db.compendium.get(entryId);
-                    if (entry) {
+                    if (entry && !processedCompendium.has(entry.id)) {
+                        processedCompendium.add(entry.id);
                         context.compendiumEntries.push(entry);
                     }
                 } catch (e) {
@@ -56,7 +60,28 @@
                 }
             }
 
-            // 2. Add scenes based on chapter/scene selections
+            // 2. Add compendium entries by tags
+            const compendiumTags = app.contextPanel.compendiumTags || [];
+            if (compendiumTags.length > 0) {
+                try {
+                    const allEntries = await db.compendium.where('projectId').equals(app.currentProject.id).toArray();
+                    for (const entry of (allEntries || [])) {
+                        if (processedCompendium.has(entry.id)) continue;
+                        // Check if entry has any of the selected tags
+                        if (entry.tags && Array.isArray(entry.tags)) {
+                            const hasMatchingTag = entry.tags.some(tag => compendiumTags.includes(tag));
+                            if (hasMatchingTag) {
+                                processedCompendium.add(entry.id);
+                                context.compendiumEntries.push(entry);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to load compendium entries by tag:', e);
+                }
+            }
+
+            // 3. Add scenes based on chapter/scene selections
             const processedScenes = new Set();
 
             // Process chapter-level selections
@@ -130,7 +155,7 @@
                 }
             }
 
-            // 3. Add scenes by tags
+            // 4. Add scenes by tags
             for (const tag of app.contextPanel.tags) {
                 const taggedScenes = app.scenes.filter(s =>
                     s.tags && Array.isArray(s.tags) && s.tags.includes(tag)

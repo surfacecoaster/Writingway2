@@ -157,7 +157,8 @@ function createAppState() {
             compendiumIds: [], // Array of compendium entry IDs
             chapters: {}, // { chapterId: 'full' | 'summary' | null }
             scenes: {}, // { sceneId: 'full' | 'summary' | null }
-            tags: [] // Array of tag strings
+            tags: [], // Array of scene tag strings
+            compendiumTags: [] // Array of compendium tag strings
         },
 
         // ========== Prompts / Codex State ==========

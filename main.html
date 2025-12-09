@@ -1042,15 +1042,15 @@
                             </div>
                         </div>
 
-                        <!-- Tags Section -->
+                        <!-- Scene Tags Section -->
                         <div
                             style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
                             <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
-                                🏷️ Tags
+                                🏷️ Scene Tags
                             </div>
                             <template x-if="getAllTags().length === 0">
                                 <div style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
-                                    No tags yet. Add tags to scenes in their summary panel.
+                                    No scene tags yet. Add tags to scenes in their summary panel.
                                 </div>
                             </template>
                             <div x-show="getAllTags().length > 0" style="display:flex;flex-wrap:wrap;gap:10px;">
@@ -1061,6 +1061,31 @@
                                         :title="contextPanel.tags.includes(tag) ? 'Click to exclude scenes with tag: ' + tag : 'Click to include scenes with tag: ' + tag"
                                         @mouseenter="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--accent)'"
                                         @mouseleave="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--border)'"
+                                        x-text="tag">
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Compendium Tags Section -->
+                        <div x-data="{ compTags: [] }" x-init="compTags = await getCompendiumTags()"
+                            style="background:var(--bg-secondary);padding:12px;border-radius:6px;border:1px solid var(--border);">
+                            <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">
+                                📚 Compendium Tags
+                            </div>
+                            <template x-if="compTags.length === 0">
+                                <div style="font-size:12px;color:var(--text-tertiary);padding:8px;text-align:center;">
+                                    No compendium tags yet. Add tags to compendium entries.
+                                </div>
+                            </template>
+                            <div x-show="compTags.length > 0" style="display:flex;flex-wrap:wrap;gap:10px;">
+                                <template x-for="tag in compTags" :key="'comp-'+tag">
+                                    <button @click="toggleContextCompendiumTag(tag)"
+                                        :style="(contextPanel.compendiumTags || []).includes(tag) ? 'background:var(--accent);color:white;border-color:var(--accent);font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);border-color:var(--border);'"
+                                        class="context-tag-btn"
+                                        :title="(contextPanel.compendiumTags || []).includes(tag) ? 'Click to exclude compendium entries with tag: ' + tag : 'Click to include compendium entries with tag: ' + tag"
+                                        @mouseenter="if (!(contextPanel.compendiumTags || []).includes(tag)) $el.style.borderColor = 'var(--accent)'"
+                                        @mouseleave="if (!(contextPanel.compendiumTags || []).includes(tag)) $el.style.borderColor = 'var(--border)'"
                                         x-text="tag">
                                     </button>
                                 </template>
@@ -2625,18 +2650,18 @@
                                     </div>
                                 </div>
 
-                                <!-- Tags Section -->
+                                <!-- Scene Tags Section -->
                                 <div
                                     style="background:var(--bg-secondary);padding:16px;border-radius:8px;border:1px solid var(--border);">
                                     <div
                                         style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
                                         <span>🏷️</span>
-                                        <span>Tags</span>
+                                        <span>Scene Tags</span>
                                     </div>
                                     <template x-if="getAllTags().length === 0">
                                         <div
                                             style="font-size:12px;color:var(--text-tertiary);padding:20px;text-align:center;">
-                                            No tags yet. Add tags to scenes in their summary panel.
+                                            No scene tags yet. Add tags to scenes in their summary panel.
                                         </div>
                                     </template>
                                     <div x-show="getAllTags().length > 0" style="display:flex;flex-wrap:wrap;gap:10px;">
@@ -2647,6 +2672,34 @@
                                                 :title="contextPanel.tags.includes(tag) ? 'Click to exclude scenes with tag: ' + tag : 'Click to include scenes with tag: ' + tag"
                                                 @mouseenter="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--accent)'"
                                                 @mouseleave="if (!contextPanel.tags.includes(tag)) $el.style.borderColor = 'var(--border)'"
+                                                x-text="tag">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Compendium Tags Section -->
+                                <div x-data="{ compTagsModal: [] }" x-init="compTagsModal = await getCompendiumTags()"
+                                    style="background:var(--bg-secondary);padding:16px;border-radius:8px;border:1px solid var(--border);">
+                                    <div
+                                        style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                                        <span>📚</span>
+                                        <span>Compendium Tags</span>
+                                    </div>
+                                    <template x-if="compTagsModal.length === 0">
+                                        <div
+                                            style="font-size:12px;color:var(--text-tertiary);padding:20px;text-align:center;">
+                                            No compendium tags yet. Add tags to compendium entries.
+                                        </div>
+                                    </template>
+                                    <div x-show="compTagsModal.length > 0" style="display:flex;flex-wrap:wrap;gap:10px;">
+                                        <template x-for="tag in compTagsModal" :key="'comp-modal-'+tag">
+                                            <button @click="toggleContextCompendiumTag(tag)"
+                                                :style="(contextPanel.compendiumTags || []).includes(tag) ? 'background:var(--accent);color:white;border-color:var(--accent);font-weight:600;' : 'background:var(--bg-primary);color:var(--text-primary);border-color:var(--border);'"
+                                                class="context-tag-btn"
+                                                :title="(contextPanel.compendiumTags || []).includes(tag) ? 'Click to exclude compendium entries with tag: ' + tag : 'Click to include compendium entries with tag: ' + tag"
+                                                @mouseenter="if (!(contextPanel.compendiumTags || []).includes(tag)) $el.style.borderColor = 'var(--accent)'"
+                                                @mouseleave="if (!(contextPanel.compendiumTags || []).includes(tag)) $el.style.borderColor = 'var(--border)'"
                                                 x-text="tag">
                                             </button>
                                         </template>
