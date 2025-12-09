@@ -74,7 +74,10 @@
                     app.modelsFetched = true;
                 } else if (app.aiProvider === 'lmstudio') {
                     // LM Studio uses OpenAI-compatible API at /v1/models
-                    const endpoint = app.aiEndpoint || 'http://localhost:1234';
+                    // Normalize endpoint: strip trailing slashes and any /v1/* paths
+                    let endpoint = (app.aiEndpoint || 'http://localhost:1234').replace(/\/+$/, '');
+                    // Remove /v1/models, /v1/chat/completions, or just /v1 if user included it
+                    endpoint = endpoint.replace(/\/v1(\/.*)?$/, '');
                     try {
                         const response = await fetch(`${endpoint}/v1/models`, {
                             signal: AbortSignal.timeout(5000)
@@ -232,7 +235,9 @@
                     }
                 } else if (app.aiProvider === 'lmstudio') {
                     // Test LM Studio connection via /v1/models endpoint
-                    const endpoint = app.aiEndpoint || 'http://localhost:1234';
+                    // Normalize endpoint: strip trailing slashes and any /v1/* paths
+                    let endpoint = (app.aiEndpoint || 'http://localhost:1234').replace(/\/+$/, '');
+                    endpoint = endpoint.replace(/\/v1(\/.*)?$/, '');
                     app.loadingMessage = 'Connecting to LM Studio...';
 
                     try {
@@ -259,6 +264,9 @@
                             if (!app.aiModel && app.providerModels.lmstudio.length > 0) {
                                 app.aiModel = app.providerModels.lmstudio[0].id;
                             }
+
+                            // Save the normalized endpoint back
+                            app.aiEndpoint = endpoint;
 
                             const modelCount = app.providerModels.lmstudio.length;
                             app.aiStatus = 'ready';

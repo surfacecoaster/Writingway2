@@ -326,7 +326,9 @@
             }
         } else if (provider === 'lmstudio') {
             // LM Studio uses OpenAI-compatible API
-            const endpoint = customEndpoint || 'http://localhost:1234';
+            // Normalize endpoint: strip trailing slashes and any /v1/* paths
+            let endpoint = (customEndpoint || 'http://localhost:1234').replace(/\/+$/, '');
+            endpoint = endpoint.replace(/\/v1(\/.*)?$/, '');
             url = `${endpoint}/v1/chat/completions`;
             headers = {
                 'Content-Type': 'application/json'
