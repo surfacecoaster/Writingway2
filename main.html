@@ -393,54 +393,12 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="item-actions" style="margin-left:12px;"
-                                                x-data="{ openMenu:false }">
-
-                                                <!-- Backdrop overlay -->
-                                                <div x-show="openMenu" x-cloak @click="openMenu = false"
-                                                    style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:9998;"
-                                                    x-transition:enter="transition ease-out duration-200"
-                                                    x-transition:enter-start="opacity-0"
-                                                    x-transition:enter-end="opacity-100"
-                                                    x-transition:leave="transition ease-in duration-150"
-                                                    x-transition:leave-start="opacity-100"
-                                                    x-transition:leave-end="opacity-0">
-                                                </div>
-
-                                                <button class="menu-button" @click.stop="openMenu = !openMenu"
-                                                    title="More">
+                                            <div class="item-actions" style="margin-left:12px;">
+                                                <button class="menu-button" 
+                                                    @click.stop="sceneActionsTarget = scene; showSceneActionsModal = true"
+                                                    title="Scene actions">
                                                     ⋯
                                                 </button>
-
-                                                <div x-show="openMenu" x-cloak @mouseenter.stop @mousemove.stop
-                                                    x-transition class="action-menu" @click.stop x-ref="actionMenu">
-                                                    <div
-                                                        style="font-size:13px;color:var(--text-secondary);padding:4px 0 8px 0;border-bottom:1px solid var(--border);margin-bottom:8px;">
-                                                        Move to:
-                                                    </div>
-                                                    <template x-for="ch in chapters" :key="ch.id">
-                                                        <button
-                                                            @click.stop="moveSceneToChapter(scene.id, ch.id); openMenu=false"
-                                                            :style="ch.id === scene.chapterId ? 'background: var(--bg-tertiary);' : ''"
-                                                            x-text="ch.title">
-                                                        </button>
-                                                    </template>
-                                                    <div
-                                                        style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
-                                                    </div>
-
-                                                    <button @click.stop="moveSceneUp(scene.id); openMenu=false">Move
-                                                        up</button>
-                                                    <button @click.stop="moveSceneDown(scene.id); openMenu=false">Move
-                                                        down</button>
-                                                    <button
-                                                        @click.stop="openRenameSceneModal(scene.id); openMenu=false">Rename
-                                                        scene</button>
-                                                    <button
-                                                        @click.stop="openSceneSummary(scene.id); openMenu=false">Summary</button>
-                                                    <button @click.stop="deleteScene(scene.id); openMenu=false">Delete
-                                                        scene</button>
-                                                </div>
                                             </div>
                                         </div>
                                     </template>
@@ -2171,6 +2129,68 @@
                     <div class="modal-buttons">
                         <button class="btn btn-secondary" @click="showRenameSceneModal = false">Cancel</button>
                         <button class="btn btn-primary" @click="renameScene">Rename</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Scene Actions Modal -->
+        <template x-if="showSceneActionsModal && sceneActionsTarget">
+            <div class="modal-overlay" @click.self="showSceneActionsModal = false" @keydown.escape.window="showSceneActionsModal = false">
+                <div class="modal" style="max-width:360px;">
+                    <h3 style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:20px;">📄</span>
+                        <span x-text="sceneActionsTarget.title"></span>
+                    </h3>
+                    
+                    <!-- Move to Chapter -->
+                    <div style="margin-bottom:16px;">
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:6px;">
+                            Move to chapter:
+                        </label>
+                        <select class="move-select" style="width:100%;padding:10px 12px;"
+                            @change="if($event.target.value) { moveSceneToChapter(sceneActionsTarget.id, $event.target.value); showSceneActionsModal = false; }">
+                            <option value="">Select chapter...</option>
+                            <template x-for="ch in chapters" :key="ch.id">
+                                <option :value="ch.id" 
+                                    :selected="ch.id === sceneActionsTarget.chapterId"
+                                    x-text="ch.title + (ch.id === sceneActionsTarget.chapterId ? ' (current)' : '')">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons Grid -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+                        <button class="btn btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:6px;"
+                            @click="moveSceneUp(sceneActionsTarget.id); showSceneActionsModal = false">
+                            ⬆️ Move up
+                        </button>
+                        <button class="btn btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:6px;"
+                            @click="moveSceneDown(sceneActionsTarget.id); showSceneActionsModal = false">
+                            ⬇️ Move down
+                        </button>
+                        <button class="btn btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:6px;"
+                            @click="openRenameSceneModal(sceneActionsTarget.id); showSceneActionsModal = false">
+                            ✏️ Rename
+                        </button>
+                        <button class="btn btn-secondary" style="display:flex;align-items:center;justify-content:center;gap:6px;"
+                            @click="openSceneSummary(sceneActionsTarget.id); showSceneActionsModal = false">
+                            📝 Summary
+                        </button>
+                    </div>
+
+                    <!-- Delete Button (separate, styled as danger) -->
+                    <button class="btn" style="width:100%;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);"
+                        @click="deleteScene(sceneActionsTarget.id); showSceneActionsModal = false">
+                        🗑️ Delete scene
+                    </button>
+
+                    <!-- Close Button -->
+                    <div style="margin-top:16px;text-align:center;">
+                        <button class="btn btn-secondary" @click="showSceneActionsModal = false">
+                            Cancel
+                        </button>
                     </div>
                 </div>
             </div>
