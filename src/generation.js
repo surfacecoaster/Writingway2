@@ -6,13 +6,25 @@
     function buildPrompt(beat, sceneContext, options = {}) {
         try {
             console.debug('[buildPrompt] received prosePrompt:', JSON.stringify(options.prosePrompt));
+            console.debug('[buildPrompt] received systemPrompt:', JSON.stringify(options.systemPrompt));
         } catch (e) { /* ignore */ }
         const povName = (options.povCharacter && options.povCharacter.trim()) ? options.povCharacter.trim() : 'the protagonist';
         const tenseText = (options.tense === 'present') ? 'present tense' : 'past tense';
         const povText = options.pov || '3rd person limited';
         const povSentence = `You are a co-author tasked with assisting your partner. You are writing a story from the point of view of ${povName} in ${tenseText}, in ${povText}.`;
 
-        const systemPrompt = `${povSentence} You are a creative writing assistant. The author provides a BEAT (what happens next) and you expand it into vivid, engaging prose. Write 2-3 paragraphs that bring the beat to life. Match the author's tone and style. Use sensory details. Show, don't tell.`;
+        // Use custom system prompt if provided, otherwise fall back to default
+        let systemPrompt;
+        if (options.systemPrompt && typeof options.systemPrompt === 'string' && options.systemPrompt.trim()) {
+            // Replace placeholders in custom system prompt
+            systemPrompt = options.systemPrompt.trim()
+                .replace(/\{povName\}/gi, povName)
+                .replace(/\{tense\}/gi, tenseText)
+                .replace(/\{pov\}/gi, povText);
+        } else {
+            // Default fallback system prompt
+            systemPrompt = `${povSentence} You are a creative writing assistant. The author provides a BEAT (what happens next) and you expand it into vivid, engaging prose. Write 2-3 paragraphs that bring the beat to life. Match the author's tone and style. Use sensory details. Show, don't tell.`;
+        }
 
         let contextText = '';
         if (sceneContext && sceneContext.length > 0) {
@@ -564,9 +576,10 @@
         app.isGenerating = true;
         try {
             app.lastBeat = app.beatInput;
-            // Resolve prose prompt text (in-memory first, then DB fallback)
+            // Resolve prose prompt text and system prompt (in-memory first, then DB fallback)
             const proseInfo = await app.resolveProsePromptInfo();
             const prosePromptText = proseInfo && proseInfo.text ? proseInfo.text : null;
+            const systemPromptText = proseInfo && proseInfo.systemText ? proseInfo.systemText : null;
             // Get context from context panel
             const panelContext = await app.buildContextFromPanel();
             // Resolve compendium entries and scene summaries from beat mentions (@/#)
@@ -585,7 +598,7 @@
             panelContext.sceneSummaries.forEach(s => sceneMap.set(s.title, s));
             beatSceneSummaries.forEach(s => sceneMap.set(s.title, s));
             const sceneSummaries = Array.from(sceneMap.values());
-            const genOpts = { povCharacter: app.povCharacter, pov: app.pov, tense: app.tense, prosePrompt: prosePromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries };
+            const genOpts = { povCharacter: app.povCharacter, pov: app.pov, tense: app.tense, prosePrompt: prosePromptText, systemPrompt: systemPromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries };
             let prompt = buildPrompt(app.beatInput, app.currentScene?.content || '', genOpts);
             // Save prompt to history
             try {

@@ -8,27 +8,27 @@
         /**
          * Resolve prose prompt information from selected prompt ID
          * @param {Object} app - Alpine app instance
-         * @returns {Promise<Object>} Prompt info {id, text, source}
+         * @returns {Promise<Object>} Prompt info {id, text, systemText, source}
          */
         async resolveProsePromptInfo(app) {
             try {
                 if (app.selectedProsePromptId) {
                     let p = (app.prompts || []).find(x => x.id === app.selectedProsePromptId && x.category === 'prose');
-                    if (p) return { id: p.id, text: p.content || null, source: 'memory' };
+                    if (p) return { id: p.id, text: p.content || null, systemText: p.systemContent || null, source: 'memory' };
                     try {
                         p = await db.prompts.get(app.selectedProsePromptId);
                     } catch (e) { p = null; }
-                    if (p) return { id: p.id, text: p.content || null, source: 'db' };
-                    return { id: app.selectedProsePromptId, text: null, source: 'missing' };
+                    if (p) return { id: p.id, text: p.content || null, systemText: p.systemContent || null, source: 'db' };
+                    return { id: app.selectedProsePromptId, text: null, systemText: null, source: 'missing' };
                 }
             } catch (e) {
                 // fallthrough
             }
 
             if (app.currentPrompt && app.currentPrompt.content) {
-                return { id: app.currentPrompt.id || null, text: app.currentPrompt.content, source: 'currentPrompt' };
+                return { id: app.currentPrompt.id || null, text: app.currentPrompt.content, systemText: app.currentPrompt.systemContent || null, source: 'currentPrompt' };
             }
-            return { id: null, text: null, source: 'none' };
+            return { id: null, text: null, systemText: null, source: 'none' };
         },
 
         /**

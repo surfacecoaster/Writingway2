@@ -67,9 +67,10 @@ Generation.generateFromBeat = async function (app) {
     app.isGenerating = true;
     try {
         app.lastBeat = app.beatInput;
-        // Resolve prose prompt text (in-memory first, then DB fallback)
+        // Resolve prose prompt text and system prompt (in-memory first, then DB fallback)
         const proseInfo = await app.resolveProsePromptInfo();
         const prosePromptText = proseInfo && proseInfo.text ? proseInfo.text : null;
+        const systemPromptText = proseInfo && proseInfo.systemText ? proseInfo.systemText : null;
         // Get context from context panel
         const panelContext = await app.buildContextFromPanel();
         // Resolve compendium entries and scene summaries from beat mentions (@/#)
@@ -88,7 +89,7 @@ Generation.generateFromBeat = async function (app) {
         panelContext.sceneSummaries.forEach(s => sceneMap.set(s.title, s));
         beatSceneSummaries.forEach(s => sceneMap.set(s.title, s));
         const sceneSummaries = Array.from(sceneMap.values());
-        const genOpts = { povCharacter: app.povCharacter, pov: app.pov, tense: app.tense, prosePrompt: prosePromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries };
+        const genOpts = { povCharacter: app.povCharacter, pov: app.pov, tense: app.tense, prosePrompt: prosePromptText, systemPrompt: systemPromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries };
         let prompt = Generation.buildPrompt(app.beatInput, app.currentScene?.content || '', genOpts);
         // Save prompt to history
         try {

@@ -1315,7 +1315,9 @@ body {
 
 /* Prompts panel with visual accent styling matching compendium */
 .slide-panel-right.prompts-panel {
-    width: 520px;
+    width: 700px; /* Default width, overridden by Alpine */
+    min-width: 500px;
+    max-width: 1200px;
     border-left: 1px solid rgba(74, 158, 255, 0.08);
     box-shadow: -18px 0 40px rgba(0, 0, 0, 0.55);
     background: linear-gradient(180deg, var(--bg-secondary), rgba(74, 158, 255, 0.02));
@@ -1330,7 +1332,25 @@ body {
     background: linear-gradient(180deg, var(--bg-primary), rgba(74, 158, 255, 0.01));
 }
 
-/* Left accent stripe for the prompts panel */
+/* Resize handle for prompts panel */
+.prompts-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+    background: transparent;
+    z-index: 10;
+    transition: background 0.15s;
+}
+
+.prompts-resize-handle:hover,
+.prompts-resize-handle.active {
+    background: linear-gradient(to bottom, var(--accent), rgba(74, 158, 255, 0.3));
+}
+
+/* Left accent stripe for the prompts panel - moved to be behind resize handle */
 .slide-panel-right.prompts-panel::after {
     content: '';
     position: absolute;
@@ -1339,11 +1359,14 @@ body {
     bottom: 0;
     width: 4px;
     background: linear-gradient(to bottom, var(--accent), rgba(74, 158, 255, 0.06));
+    pointer-events: none;
 }
 
 @media (max-width: 900px) {
     .slide-panel-right.prompts-panel {
-        width: 92vw;
+        width: 92vw !important;
+        min-width: unset;
+        max-width: unset;
     }
 }
 

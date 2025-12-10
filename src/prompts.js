@@ -22,7 +22,7 @@
         const title = app.newPromptTitle && app.newPromptTitle.trim() ? app.newPromptTitle.trim() : 'New Prompt';
         const id = Date.now().toString();
         const now = new Date();
-        const prompt = { id, projectId: app.currentProject.id, category, title, content: '', created: now, modified: now };
+        const prompt = { id, projectId: app.currentProject.id, category, title, content: '', systemContent: '', created: now, modified: now };
         await db.prompts.add(prompt);
         app.newPromptTitle = '';
         await loadPrompts(app);
@@ -34,6 +34,7 @@
         if (!p) return;
         app.currentPrompt = { ...p };
         app.promptEditorContent = p.content || '';
+        app.promptEditorSystemContent = p.systemContent || '';
 
         // If this is a prose prompt, persist it as the selected project-level prose prompt
         try {
@@ -52,6 +53,7 @@
             await db.prompts.update(app.currentPrompt.id, {
                 title: app.currentPrompt.title,
                 content: app.promptEditorContent,
+                systemContent: app.promptEditorSystemContent,
                 category: app.currentPrompt.category,
                 modified: now
             });
@@ -59,6 +61,7 @@
             // refresh currentPrompt reference
             app.currentPrompt = await db.prompts.get(app.currentPrompt.id);
             app.promptEditorContent = app.currentPrompt.content || '';
+            app.promptEditorSystemContent = app.currentPrompt.systemContent || '';
         } catch (e) {
             console.error('Failed to save prompt:', e);
         }

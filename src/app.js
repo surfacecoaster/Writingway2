@@ -1650,9 +1650,10 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 try {
-                    // Resolve prose prompt text (in-memory first, then DB fallback)
+                    // Resolve prose prompt text and system prompt (in-memory first, then DB fallback)
                     const proseInfo = await this.resolveProsePromptInfo();
                     const prosePromptText = proseInfo && proseInfo.text ? proseInfo.text : null;
+                    const systemPromptText = proseInfo && proseInfo.systemText ? proseInfo.systemText : null;
 
                     // Get context from context panel
                     const panelContext = await this.buildContextFromPanel();
@@ -1678,14 +1679,14 @@ document.addEventListener('alpine:init', () => {
                     if (window.Generation && typeof window.Generation.buildPrompt === 'function') {
                         // DEBUG: log resolved prose info and options
                         try { console.debug('[preview] proseInfo=', proseInfo); } catch (e) { }
-                        const optsPreview = { povCharacter: this.povCharacter, pov: this.pov, tense: this.tense, prosePrompt: prosePromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries, preview: true };
+                        const optsPreview = { povCharacter: this.povCharacter, pov: this.pov, tense: this.tense, prosePrompt: prosePromptText, systemPrompt: systemPromptText, compendiumEntries: compEntries, sceneSummaries: sceneSummaries, preview: true };
                         try { console.debug('[preview] buildPrompt opts:', { proseType: typeof optsPreview.prosePrompt, len: optsPreview.prosePrompt ? optsPreview.prosePrompt.length : 0 }); } catch (e) { }
                         try { console.debug('[preview] prosePrompt raw:', JSON.stringify(optsPreview.prosePrompt)); } catch (e) { }
                         prompt = window.Generation.buildPrompt(this.beatInput, this.currentScene?.content || '', optsPreview);
                         try { console.debug('[preview] builtPrompt preview:', String(prompt).slice(0, 600).replace(/\n/g, '\\n')); } catch (e) { }
                     } else {
                         // Fallback textual representation if generation module isn't loaded
-                        prompt = `=== PREVIEW PROMPT ===\nBEAT:\n${this.beatInput}\n\nPOV CHARACTER: ${this.povCharacter || ''}\nPOV: ${this.pov}\nTENSE: ${this.tense}\n\n---\n(Scene content below)\n${this.currentScene?.content || ''}\n\n---\n(Prose prompt)\n${prosePromptText || '(none)'}\n`;
+                        prompt = `=== PREVIEW PROMPT ===\nBEAT:\n${this.beatInput}\n\nPOV CHARACTER: ${this.povCharacter || ''}\nPOV: ${this.pov}\nTENSE: ${this.tense}\n\n---\n(Scene content below)\n${this.currentScene?.content || ''}\n\n---\n(System prompt)\n${systemPromptText || '(default)'}\n\n---\n(User prompt)\n${prosePromptText || '(none)'}\n`;
                     }
 
                     // Create a simple overlay showing the prompt in a read-only textarea so the user can inspect/copy it.

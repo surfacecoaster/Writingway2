@@ -166,9 +166,11 @@ function createAppState() {
         promptCategories: ['prose', 'rewrite', 'summary', 'workshop'],
         promptCollapsed: {},
         currentPrompt: {},
-        promptEditorContent: '',
+        promptEditorContent: '', // User message content
+        promptEditorSystemContent: '', // System message content
         newPromptTitle: '',
         selectedProsePromptId: '', // Selected prose prompt for generation (empty string = fallback)
+        promptsPanelWidth: 700, // Default width in pixels, resizable
 
         // ========== Compendium State ==========
         compendiumCategories: ['characters', 'places', 'items', 'lore', 'notes'],
