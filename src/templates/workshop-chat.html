@@ -159,9 +159,13 @@
                                 x-text="msg.role === 'user' ? 'You' : (msg.isError ? 'Error' : 'Assistant')">
                             </div>
                         </div>
-                        <div class="workshop-message-content">
-                            <template x-if="msg.content">
+                        <div class="workshop-message-content md-content"
+                            :class="{ 'md-rendered': msg.role === 'assistant' && msg.content }">
+                            <template x-if="msg.content && msg.role === 'user'">
                                 <span x-text="msg.content"></span>
+                            </template>
+                            <template x-if="msg.content && msg.role === 'assistant'">
+                                <div x-html="markdownToHtml(msg.content)"></div>
                             </template>
                             <template x-if="!msg.content && msg.role === 'assistant' && workshopIsGenerating">
                                 <span class="typing-indicator">●●●</span>

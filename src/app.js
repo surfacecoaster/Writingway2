@@ -1519,26 +1519,78 @@ document.addEventListener('alpine:init', () => {
             markdownToHtml(text) {
                 if (!text) return '';
 
-                let html = text
+                // Store code blocks to prevent processing their contents
+                const codeBlocks = [];
+                let html = text;
+
+                // Extract fenced code blocks (```language\ncode\n```)
+                html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+                    const idx = codeBlocks.length;
+                    // Escape HTML in code blocks
+                    const escapedCode = code
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                    codeBlocks.push(`<pre class="md-code-block"><code class="language-${lang || 'text'}">${escapedCode}</code></pre>`);
+                    return `__CODE_BLOCK_${idx}__`;
+                });
+
+                // Extract inline code (`code`)
+                html = html.replace(/`([^`]+)`/g, (match, code) => {
+                    const escapedCode = code
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    return `<code class="md-inline-code">${escapedCode}</code>`;
+                });
+
+                html = html
                     // Headers (must be processed before paragraphs)
                     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
                     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
                     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                    // Horizontal rules
+                    .replace(/^---+$/gim, '<hr>')
+                    .replace(/^\*\*\*+$/gim, '<hr>')
                     // Blockquotes (must be before paragraphs)
                     .replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
+                    // Unordered lists (basic support)
+                    .replace(/^[\-\*] (.+$)/gim, '<li class="md-ul">$1</li>')
+                    // Ordered lists (basic support)
+                    .replace(/^\d+\. (.+$)/gim, '<li class="md-ol">$1</li>')
                     // Bold (process before paragraphs)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     // Italic (process before paragraphs)
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     // Strikethrough (process before paragraphs)
                     .replace(/~~(.+?)~~/g, '<del>$1</del>')
+                    // Links [text](url)
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
                     // Convert double line breaks to paragraph breaks
                     .replace(/\n\n+/g, '</p><p>')
                     // Convert single line breaks to <br>
                     .replace(/\n/g, '<br>');
 
+                // Wrap consecutive list items in ul/ol tags
+                html = html.replace(/(<li class="md-ul">.+?<\/li>(?:<br>)?)+/g, (match) => {
+                    const items = match.replace(/<br>/g, '');
+                    return `<ul>${items}</ul>`;
+                });
+                html = html.replace(/(<li class="md-ol">.+?<\/li>(?:<br>)?)+/g, (match) => {
+                    const items = match.replace(/<br>/g, '');
+                    return `<ol>${items}</ol>`;
+                });
+                // Clean up list item classes
+                html = html.replace(/ class="md-ul"/g, '').replace(/ class="md-ol"/g, '');
+
+                // Restore code blocks
+                codeBlocks.forEach((block, idx) => {
+                    html = html.replace(`__CODE_BLOCK_${idx}__`, block);
+                });
+
                 // Wrap in paragraphs if not already wrapped in block elements
-                if (!html.startsWith('<h') && !html.startsWith('<blockquote>')) {
+                if (!html.startsWith('<h') && !html.startsWith('<blockquote>') && !html.startsWith('<pre') && !html.startsWith('<ul') && !html.startsWith('<ol')) {
                     html = `<p>${html}</p>`;
                 }
 
