@@ -237,6 +237,9 @@ document.addEventListener('alpine:init', () => {
                     }, 500);
                 }
 
+                // Load light mode preference early to avoid flash
+                this.loadLightModePreference();
+
                 this.updateLoadingScreen(85, 'Almost ready...', 'Finalizing setup...');
 
                 // Selection change handler: show Rewrite button when text is selected
@@ -429,6 +432,21 @@ document.addEventListener('alpine:init', () => {
                     localStorage.setItem('writingway:ttsVoice', this.ttsVoiceName);
                 }
                 localStorage.setItem('writingway:ttsSpeed', this.ttsSpeed.toString());
+            },
+
+            // Toggle light/dark mode and persist preference
+            toggleLightMode() {
+                document.documentElement.classList.toggle('light-mode', this.lightMode);
+                document.body.classList.toggle('light-mode', this.lightMode);
+                localStorage.setItem('writingway:lightMode', this.lightMode ? 'true' : 'false');
+            },
+
+            // Load light mode preference from localStorage
+            loadLightModePreference() {
+                const saved = localStorage.getItem('writingway:lightMode');
+                this.lightMode = saved === 'true';
+                document.documentElement.classList.toggle('light-mode', this.lightMode);
+                document.body.classList.toggle('light-mode', this.lightMode);
             },
 
             // Wire up the draggable beat splitter. Runs after Alpine has mounted.

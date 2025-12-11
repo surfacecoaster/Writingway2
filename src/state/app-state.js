@@ -86,6 +86,9 @@ function createAppState() {
         ttsSpeed: 1.0, // Speech rate (0.5 - 2.0)
         availableTTSVoices: [], // Populated on init
 
+        // ========== Accessibility Settings ==========
+        lightMode: false, // Light/dark theme toggle
+
         // ========== Markdown Preview State ==========
         showMarkdownPreview: false,
 
