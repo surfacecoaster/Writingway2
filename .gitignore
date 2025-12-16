@@ -19,3 +19,5 @@ dist/
 todo.md
 # Ignore Continue AI configs
 .continue/
+# Ignore Claude Code
+.claude/
