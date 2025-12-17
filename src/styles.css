@@ -954,7 +954,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .editor-textarea {
@@ -1060,8 +1060,8 @@ body {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
     /* Prevent the beat panel from shrinking */
-    overflow: hidden;
-    /* No scrolling - everything opens as modals */
+    overflow: visible;
+    /* Allow popups to extend beyond panel bounds */
 }
 
 .beat-panel h3 {
@@ -2038,7 +2038,7 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 300px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .workshop-splitter {
