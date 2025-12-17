@@ -1604,6 +1604,9 @@ body {
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    /* Allow flex children to shrink and enable scrolling */
+    overflow: hidden;
 }
 
 .workshop-sessions-header {
