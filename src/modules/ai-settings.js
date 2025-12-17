@@ -335,8 +335,8 @@
                     app.useProviderDefaults = settings.useProviderDefaults || false;
                     app.forceNonStreaming = settings.forceNonStreaming || false;
 
-                    // Fetch fresh model list if we have API credentials
-                    if (app.aiMode === 'api' && app.aiApiKey) {
+                    // Fetch fresh model list if we have API credentials (or LM Studio which doesn't need a key)
+                    if (app.aiMode === 'api' && (app.aiApiKey || app.aiProvider === 'lmstudio')) {
                         await this.fetchProviderModels(app);
                     }
 

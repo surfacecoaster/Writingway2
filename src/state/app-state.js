@@ -16,6 +16,7 @@ function createAppState() {
         renameProjectName: '',
         showExportModal: false,
         exportFormat: 'zip', // 'zip', 'epub', 'html', 'txt'
+        exportIncludeSceneTitles: true, // Include scene titles in export (not applicable to ZIP)
         showAISettings: false,
         showPromptsPanel: false,
         showPromptHistory: false,

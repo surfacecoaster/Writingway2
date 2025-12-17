@@ -6,25 +6,29 @@
             // Check what mode the user has configured
             const aiMode = app.aiMode || 'api'; // Default to API mode
             const hasApiKey = app.aiApiKey && app.aiApiKey.length > 0;
+            const provider = app.aiProvider || 'anthropic';
 
-            // If using API mode and has API key, mark as ready immediately
-            if (aiMode === 'api' && hasApiKey) {
+            // Providers that don't require an API key
+            const noKeyRequired = provider === 'lmstudio';
+
+            // If using API mode and has API key (or provider doesn't need one), mark as ready
+            if (aiMode === 'api' && (hasApiKey || noKeyRequired)) {
                 if (app.updateLoadingScreen) {
-                    app.updateLoadingScreen(60, 'AI Ready', `Connected to ${app.aiProvider || 'API'}`);
+                    app.updateLoadingScreen(60, 'AI Ready', `Connected to ${provider}`);
                 }
                 app.aiStatus = 'ready';
 
                 // Get the display name for the model
                 let modelDisplayName = app.aiModel;
-                if (app.providerModels[app.aiProvider]) {
-                    const modelInfo = app.providerModels[app.aiProvider].find(m => m.id === app.aiModel);
+                if (app.providerModels[provider]) {
+                    const modelInfo = app.providerModels[provider].find(m => m.id === app.aiModel);
                     if (modelInfo) {
                         modelDisplayName = modelInfo.name;
                     }
                 }
 
-                app.aiStatusText = modelDisplayName ? `AI Ready (${modelDisplayName})` : `AI Ready (${app.aiProvider || 'API'})`;
-                console.log('✓ AI configured with API provider');
+                app.aiStatusText = modelDisplayName ? `AI Ready (${modelDisplayName})` : `AI Ready (${provider})`;
+                console.log(`✓ AI configured with ${provider}${noKeyRequired ? ' (no API key required)' : ''}`);
                 return;
             }
 
@@ -68,7 +72,18 @@
             app.aiStatus = 'not-configured';
             app.aiStatusText = 'Configure AI';
             app.showModelLoading = false;
+
+            // Detailed logging for debugging configuration issues
+            const configDetails = [];
+            if (aiMode === 'api') {
+                if (!hasApiKey && !noKeyRequired) {
+                    configDetails.push(`Missing API key for ${provider}`);
+                }
+            }
             console.log('ℹ️ AI not configured. Click "Configure AI" to set up.');
+            if (configDetails.length > 0) {
+                console.log('   Reason:', configDetails.join(', '));
+            }
 
         } catch (error) {
             // Connection failed or timeout - gracefully handle

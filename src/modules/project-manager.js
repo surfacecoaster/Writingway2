@@ -434,6 +434,7 @@
             if (!app.currentProject) return;
             try {
                 const pid = app.currentProject.id;
+                const includeSceneTitles = app.exportIncludeSceneTitles !== false; // default true
                 let output = '';
 
                 // Add project title
@@ -447,7 +448,8 @@
                     output += '-'.repeat(ch.title.length) + '\n\n';
 
                     const scenes = await db.scenes.where('projectId').equals(pid).and(s => s.chapterId === ch.id).sortBy('order');
-                    for (const s of scenes) {
+                    for (let i = 0; i < scenes.length; i++) {
+                        const s = scenes[i];
                         // fetch content robustly
                         let content = null;
                         try { content = await db.content.get(s.id); } catch (e) { content = null; }
@@ -456,8 +458,13 @@
                         }
                         const text = content ? (content.text || '') : '';
 
-                        // Add scene with title as comment
-                        output += `\n# ${s.title}\n\n`;
+                        // Add scene title if enabled
+                        if (includeSceneTitles) {
+                            output += `\n# ${s.title}\n\n`;
+                        } else if (i > 0) {
+                            // Add scene break separator when not including titles (except before first scene)
+                            output += '\n* * *\n\n';
+                        }
                         output += text + '\n';
                     }
                 }
@@ -491,6 +498,7 @@
             if (!app.currentProject) return;
             try {
                 const pid = app.currentProject.id;
+                const includeSceneTitles = app.exportIncludeSceneTitles !== false; // default true
                 let html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -568,7 +576,10 @@
                         }
                         const text = content ? (content.text || '') : '';
 
-                        html += `    <h3>${this.escapeHtml(s.title)}</h3>\n`;
+                        // Add scene title if enabled
+                        if (includeSceneTitles) {
+                            html += `    <h3>${this.escapeHtml(s.title)}</h3>\n`;
+                        }
 
                         // Convert plain text to HTML paragraphs
                         const paragraphs = text.split('\n\n').filter(p => p.trim());
@@ -623,6 +634,7 @@
                 const pid = app.currentProject.id;
                 const projectName = app.currentProject.name || 'Untitled';
                 const nameSafe = projectName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').slice(0, 80).trim();
+                const includeSceneTitles = app.exportIncludeSceneTitles !== false; // default true
 
                 // EPUB requires specific structure
                 // mimetype file (must be first, uncompressed)
@@ -657,7 +669,8 @@
 `;
 
                     const scenes = await db.scenes.where('projectId').equals(pid).and(s => s.chapterId === ch.id).sortBy('order');
-                    for (const s of scenes) {
+                    for (let sIdx = 0; sIdx < scenes.length; sIdx++) {
+                        const s = scenes[sIdx];
                         // fetch content robustly
                         let content = null;
                         try { content = await db.content.get(s.id); } catch (e) { content = null; }
@@ -666,7 +679,12 @@
                         }
                         const text = content ? (content.text || '') : '';
 
-                        chapterContent += `    <h2>${this.escapeHtml(s.title)}</h2>\n`;
+                        // Add scene title if enabled, otherwise add scene break (except before first scene)
+                        if (includeSceneTitles) {
+                            chapterContent += `    <h2>${this.escapeHtml(s.title)}</h2>\n`;
+                        } else if (sIdx > 0) {
+                            chapterContent += `    <p style="text-align:center;margin:2em 0;">* * *</p>\n`;
+                        }
 
                         // Convert plain text to HTML paragraphs
                         const paragraphs = text.split('\n\n').filter(p => p.trim());
