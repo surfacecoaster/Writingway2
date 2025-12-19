@@ -934,10 +934,42 @@ body {
 }
 
 /* Editor Area */
+
+/* Main Content Area - flex wrapper for banner + editor */
+.main-content-area {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Auto-Backup Warning Banner */
+.backup-warning-banner {
+    width: 100%;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    padding: 12px 20px;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+    flex-shrink: 0;
+}
+
+html.light-mode .backup-warning-banner,
+.light-mode .backup-warning-banner {
+    background: #ef4444;
+    color: #fff;
+}
+
 .editor-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .editor-header {

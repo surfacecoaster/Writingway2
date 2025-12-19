@@ -420,8 +420,15 @@
                     </div>
                 </div>
 
-                <!-- Editor -->
-                <div class="editor-container" x-data="{ beatSplitterDragging: false }"
+                <!-- Main Content Area (wrapper for banner + editor) -->
+                <div class="main-content-area">
+                    <!-- Auto-Backup Warning Banner (non-dismissable) -->
+                    <div x-show="!backupEnabled || !githubToken" x-cloak class="backup-warning-banner">
+                        AUTO BACKUP NOT ENABLED! Data will be lost on deleting the browser cache or site data.
+                    </div>
+
+                    <!-- Editor -->
+                    <div class="editor-container" x-data="{ beatSplitterDragging: false }"
                     @mouseup.window="beatSplitterDragging = false" @mousemove.window="if (beatSplitterDragging) {
                         const container = $el;
                         const rect = container.getBoundingClientRect();
@@ -805,6 +812,7 @@
                                 <button class="btn btn-secondary" @click="discardGeneration">Discard</button>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
