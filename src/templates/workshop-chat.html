@@ -95,7 +95,7 @@
                 </select>
                 <span x-show="aiMode === 'local' && availableLocalModels.length === 0"
                     style="padding:4px 12px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;font-size:12px;">
-                    ✓ Local Model Active
+                    ✓ Local GGUF Model Active
                 </span>
                 <select x-model="selectedWorkshopPromptId" @change="saveSelectedWorkshopPrompt" class="workshop-select">
                     <option value="">Default Workshop Prompt</option>

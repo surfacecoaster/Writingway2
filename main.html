@@ -1470,16 +1470,32 @@
                             @click="aiMode = 'api'; if (aiProvider === 'openrouter' && !aiModel) aiModel = 'google/gemini-2.0-flash-exp:free';"
                             style="flex:1;display:flex;flex-direction:column;align-items:center;padding:12px;">
                             <div style="font-size:20px;margin-bottom:4px;">☁️</div>
-                            <div style="font-weight:600;">API (Cloud)</div>
-                            <div style="font-size:11px;opacity:0.7;">No setup required</div>
+                            <div style="font-weight:600;text-align:center;">API / Local API</div>
+                            <div style="font-size:10px;opacity:0.7;text-align:center;">(LM Studio, Ollama, etc.)</div>
                         </button>
                         <button class="btn" :class="aiMode === 'local' ? 'btn-primary' : 'btn-secondary'"
                             @click="aiMode = 'local'; if (availableLocalModels.length > 0 && !aiModel) aiModel = availableLocalModels[0]; scanLocalModels();"
                             style="flex:1;display:flex;flex-direction:column;align-items:center;padding:12px;">
                             <div style="font-size:20px;margin-bottom:4px;">💻</div>
-                            <div style="font-weight:600;">Local Model</div>
-                            <div style="font-size:11px;opacity:0.7;">Privacy & offline</div>
+                            <div style="font-weight:600;text-align:center;">Local GGUF Model</div>
+                            <div style="font-size:10px;opacity:0.7;text-align:center;">(llama.cpp backend)</div>
                         </button>
+                    </div>
+
+                    <!-- Helper text for API mode -->
+                    <div x-show="aiMode === 'api'" style="margin-top:12px;padding:10px;background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.2);border-radius:6px;">
+                        <p style="font-size:11px;color:var(--text-secondary);margin:0;line-height:1.5;">
+                            Use this when connecting to LM Studio, Ollama, Groq, or any OpenAI-compatible server endpoint.<br>
+                            Works for both remote and local APIs via HTTP.
+                        </p>
+                    </div>
+
+                    <!-- Helper text for Local GGUF mode -->
+                    <div x-show="aiMode === 'local'" style="margin-top:12px;padding:10px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.2);border-radius:6px;">
+                        <p style="font-size:11px;color:var(--text-secondary);margin:0;line-height:1.5;">
+                            Use this ONLY for loading GGUF models placed in /models, running via built-in llama-server backend.<br>
+                            Does NOT support LM Studio / API-based local inference.
+                        </p>
                     </div>
                 </div>
 
@@ -1651,9 +1667,9 @@
                     </div>
                 </div>
 
-                <!-- Local Mode Settings -->
+                <!-- Local GGUF Mode Settings -->
                 <div x-show="aiMode === 'local'" style="margin-bottom:20px;">
-                    <h4 style="margin:0 0 12px 0;">Local Model Settings</h4>
+                    <h4 style="margin:0 0 12px 0;">Local GGUF Model Settings</h4>
 
                     <div
                         style="background:rgba(74,158,255,0.05);border:1px solid rgba(74,158,255,0.2);border-radius:6px;padding:12px;margin-bottom:16px;">

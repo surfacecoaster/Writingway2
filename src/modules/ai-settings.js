@@ -125,7 +125,7 @@
                 // Note: Browser can't actually scan filesystem
                 // The model name here is just for display - the actual model is whatever
                 // llama-server.exe loaded from the models folder when you ran start.bat
-                alert('ℹ️ Local Model Info:\n\n' +
+                alert('ℹ️ Local GGUF Model Info:\n\n' +
                     'The browser cannot scan your models folder directly.\n\n' +
                     'The model shown here is just for display.\n\n' +
                     '✓ Your ACTUAL model is whatever start.bat loaded into llama-server\n' +
@@ -133,7 +133,9 @@
                     'To change models:\n' +
                     '1. Close all Writingway windows\n' +
                     '2. Put a different .gguf file in the models folder\n' +
-                    '3. Run start.bat again (it will use the first .gguf file it finds)');
+                    '3. Run start.bat again (it will use the first .gguf file it finds)\n\n' +
+                    'NOTE: If you want to use LM Studio or Ollama,\n' +
+                    'select "API / Local API" mode instead.');
             } catch (e) {
                 console.error('Failed to scan models:', e);
                 alert('Could not scan models folder');
