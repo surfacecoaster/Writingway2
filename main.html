@@ -1635,6 +1635,18 @@
                         </p>
                     </div>
 
+                    <div x-show="filterReasoningTags" style="margin-bottom:16px;">
+                        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">
+                            Custom Reasoning Tags
+                        </label>
+                        <input type="text" x-model="customReasoningTags" @change="saveGenerationParams()"
+                            placeholder="[THOUGHT],[/THOUGHT],[REASONING],[/REASONING]"
+                            style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:6px;">
+                        <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;">
+                            Comma-separated list of tags to filter out (e.g. "[THOUGHT],[/THOUGHT],[REASONING],[/REASONING]")
+                        </p>
+                    </div>
+
                     <div x-show="aiProvider === 'lmstudio'" style="margin-bottom:16px;">
                         <label
                             style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">LM Studio Server URL</label>
