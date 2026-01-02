@@ -1,27 +1,72 @@
-# models / checkpoints / caches
-models/
-*.gguf
-*.bin
-*.pt
-*.safetensors
-*.zip
-*.7z
-*.tar*
-# typical Python/IDE junk
+```
+# Compiled and build artifacts
+*.pyc
 __pycache__/
-*.py[cod]
-env/
-.venv/
-build/
+*.o
+*.obj
 dist/
+build/
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
 .vscode/
 .idea/
-todo.md
-# Ignore Continue AI configs
-.continue/
-# Ignore Claude Code
-.claude/
-# Update staging folder
-.update/
-# Node modules
-node_modules/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Common compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```
