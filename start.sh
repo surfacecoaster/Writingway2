@@ -10,21 +10,21 @@ echo "================================"
 echo ""
 
 # Check if llama-server exists (in llama subfolder)
-if [ ! -f "./llama/llama-server" ]; then
-    echo "[!] llama-server not found!"
-    echo ""
-    echo "Please download llama.cpp for your system:"
-    echo "1. Go to: https://github.com/ggerganov/llama.cpp/releases"
-    echo "2. For Mac: Download llama-XXX-bin-macos-arm64.zip (Apple Silicon)"
-    echo "            or llama-XXX-bin-macos-x64.zip (Intel Mac)"
-    echo "   For Linux: Download llama-XXX-bin-ubuntu-x64.zip"
-    echo "3. Create a 'llama' folder and extract all files there"
-    echo ""
-    echo "Expected location: $(pwd)/llama/llama-server"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
-fi
+#if [ ! -f "./llama/llama-server" ]; then
+#    echo "[!] llama-server not found!"
+#    echo ""
+#    echo "Please download llama.cpp for your system:"
+#    echo "1. Go to: https://github.com/ggerganov/llama.cpp/releases"
+#    echo "2. For Mac: Download llama-XXX-bin-macos-arm64.zip (Apple Silicon)"
+#    echo "            or llama-XXX-bin-macos-x64.zip (Intel Mac)"
+#    echo "   For Linux: Download llama-XXX-bin-ubuntu-x64.zip"
+#    echo "3. Create a 'llama' folder and extract all files there"
+#    echo ""
+#    echo "Expected location: $(pwd)/llama/llama-server"
+#    echo ""
+#    read -p "Press Enter to exit..."
+#    exit 1
+#fi
 
 # Make llama-server executable
 chmod +x ./llama/llama-server
