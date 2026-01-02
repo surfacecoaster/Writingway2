@@ -1621,6 +1621,20 @@
                         </p>
                     </div>
 
+                    <!-- Filter Reasoning/Thinking Tags -->
+                    <div style="margin-bottom:16px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" x-model="filterReasoningTags" @change="saveGenerationParams()"
+                                style="width:16px;height:16px;cursor:pointer;">
+                            <span style="font-size:13px;color:var(--text-primary);">
+                                Filter out reasoning/thinking tags
+                            </span>
+                        </label>
+                        <p style="font-size:11px;color:var(--text-secondary);margin:4px 0 0 0;padding-left:24px;">
+                            Remove AI responses that contain reasoning tags like [THOUGHT], [REASONING], etc. from the final output.
+                        </p>
+                    </div>
+
                     <div x-show="aiProvider === 'lmstudio'" style="margin-bottom:16px;">
                         <label
                             style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">LM Studio Server URL</label>

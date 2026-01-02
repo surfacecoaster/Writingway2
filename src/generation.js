@@ -162,6 +162,54 @@
         return result;
     }
 
+    /**
+     * Filter out reasoning/thinking tags from AI response
+     * @param {string} content - The AI response content
+     * @param {boolean} shouldFilter - Whether to apply filtering
+     * @returns {string} - Filtered content
+     */
+    function filterReasoningTags(content, shouldFilter) {
+        if (!shouldFilter || !content) {
+            return content;
+        }
+
+        // Remove common reasoning/thinking tags and their content
+        let filtered = content;
+
+        // Remove [THOUGHT]...[/THOUGHT] blocks
+        filtered = filtered.replace(/\[THOUGHT\][\s\S]*?\[\/THOUGHT\]/gi, '');
+        // Remove [REASONING]...[/REASONING] blocks
+        filtered = filtered.replace(/\[REASONING\][\s\S]*?\[\/REASONING\]/gi, '');
+        // Remove [THINKING]...[/THINKING] blocks
+        filtered = filtered.replace(/\[THINKING\][\s\S]*?\[\/THINKING\]/gi, '');
+        // Remove [REASON]...[/REASON] blocks
+        filtered = filtered.replace(/\[REASON\][\s\S]*?\[\/REASON\]/gi, '');
+        // Remove [THOUGHT]...[THOUGHT] blocks (without /)
+        filtered = filtered.replace(/\[THOUGHT\][\s\S]*?\[THOUGHT\]/gi, '');
+        // Remove [REASONING]...[REASONING] blocks (without /)
+        filtered = filtered.replace(/\[REASONING\][\s\S]*?\[REASONING\]/gi, '');
+        // Remove [THINKING]...[THINKING] blocks (without /)
+        filtered = filtered.replace(/\[THINKING\][\s\S]*?\[THINKING\]/gi, '');
+        // Remove [REASON]...[REASON] blocks (without /)
+        filtered = filtered.replace(/\[REASON\][\s\S]*?\[REASON\]/gi, '');
+
+        // Remove lines that contain only reasoning tags
+        filtered = filtered.replace(/^\s*\[THOUGHT\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[\/THOUGHT\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[REASONING\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[\/REASONING\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[THINKING\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[\/THINKING\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[REASON\]\s*$/gm, '');
+        filtered = filtered.replace(/^\s*\[\/REASON\]\s*$/gm, '');
+
+        // Clean up multiple newlines that might result from filtering
+        filtered = filtered.replace(/\n\s*\n/g, '\n\n');
+        filtered = filtered.trim();
+
+        return filtered;
+    }
+
     async function streamGenerationLocal(prompt, onToken, endpoint, temperature, maxTokens, useProviderDefaults) {
         // Local llama-server completion
         const requestBody = {
@@ -205,7 +253,17 @@
                     try {
                         const data = JSON.parse(line.slice(6));
                         if (data.content) {
-                            onToken(data.content);
+                            // Apply filtering if enabled in app settings
+                            let content = data.content;
+                            if (app && app.filterReasoningTags) {
+                                content = filterReasoningTags(content, true);
+                                // Only emit content if it's not empty after filtering
+                                if (content) {
+                                    onToken(content);
+                                }
+                            } else {
+                                onToken(data.content);
+                            }
                         }
                         if (data.stop) {
                             return;
