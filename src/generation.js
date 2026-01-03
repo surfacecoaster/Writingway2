@@ -120,6 +120,70 @@
         let promptStr = prompt;
         let messages = null;
 
+        // --- Streaming-aware reasoning filter wrapper ---
+        // If app.filterReasoningTags is enabled, wrap the onToken callback so
+        // any content between tags like <think>...</think> is suppressed while
+        // tokens stream. The wrapper is stateful and preserves partial tags
+        // across token boundaries.
+        const shouldFilterStream = !!(app && app.filterReasoningTags);
+        const reasoningTags = ['think', 'reason', 'thought', 'thinking'];
+        let _insideReason = false;
+        let _carry = '';
+
+        function makeFilteredOnToken(orig) {
+            return function (token) {
+                if (!token) return;
+                let chunk = (_carry || '') + String(token);
+                _carry = '';
+                let emitBuf = '';
+
+                while (chunk.length) {
+                    if (!_insideReason) {
+                        const lc = chunk.toLowerCase();
+                        let openIdx = -1, openTag = null;
+                        for (const t of reasoningTags) {
+                            const idx = lc.indexOf(`<${t}>`);
+                            if (idx !== -1 && (openIdx === -1 || idx < openIdx)) { openIdx = idx; openTag = t; }
+                        }
+                        if (openIdx === -1) {
+                            const lastLt = chunk.lastIndexOf('<');
+                            if (lastLt === -1 || chunk.length - lastLt > 40) {
+                                emitBuf += chunk;
+                                chunk = '';
+                            } else {
+                                emitBuf += chunk.slice(0, lastLt);
+                                _carry = chunk.slice(lastLt);
+                                chunk = '';
+                            }
+                        } else {
+                            emitBuf += chunk.slice(0, openIdx);
+                            chunk = chunk.slice(openIdx + (`<${openTag}>`).length);
+                            _insideReason = true;
+                        }
+                    } else {
+                        const lc = chunk.toLowerCase();
+                        let closeIdx = -1, closeTag = null;
+                        for (const t of reasoningTags) {
+                            const idx = lc.indexOf(`</${t}>`);
+                            if (idx !== -1 && (closeIdx === -1 || idx < closeIdx)) { closeIdx = idx; closeTag = t; }
+                        }
+                        if (closeIdx === -1) {
+                            const keep = Math.min(80, chunk.length);
+                            _carry = chunk.slice(-keep);
+                            chunk = '';
+                        } else {
+                            chunk = chunk.slice(closeIdx + (`</${closeTag}>`).length);
+                            _insideReason = false;
+                        }
+                    }
+                }
+
+                if (emitBuf) orig(emitBuf);
+            };
+        }
+
+        const filteredOnToken = shouldFilterStream ? makeFilteredOnToken(onToken) : onToken;
+
         if (typeof prompt === 'object' && prompt.messages) {
             // buildPrompt() result with messages and asString()
             messages = prompt.messages;
@@ -138,10 +202,10 @@
 
         if (aiMode === 'api') {
             // API Mode - use configured provider with messages
-            return await streamGenerationAPI(messages || promptStr, onToken, aiProvider, aiApiKey, aiModel, aiEndpoint, temperature, maxTokens, app, useProviderDefaults);
+            return await streamGenerationAPI(messages || promptStr, filteredOnToken, aiProvider, aiApiKey, aiModel, aiEndpoint, temperature, maxTokens, app, useProviderDefaults);
         } else {
             // Local Mode - use llama-server with string prompt
-            return await streamGenerationLocal(promptStr, onToken, aiEndpoint, temperature, maxTokens, useProviderDefaults);
+            return await streamGenerationLocal(promptStr, filteredOnToken, aiEndpoint, temperature, maxTokens, useProviderDefaults);
         }
     }
 
@@ -192,7 +256,11 @@
         filtered = filtered.replace(/\[THINKING\][\s\S]*?\[THINKING\]/gi, '');
         // Remove [REASON]...[REASON] blocks (without /)
         filtered = filtered.replace(/\[REASON\][\s\S]*?\[REASON\]/gi, '');
-
+        // Remove <think>...</think> and similar angle-bracket tags
+        filtered = filtered.replace(/<think>[\s\S]*?<\/think>/gi, '');
+        filtered = filtered.replace(/<reason>[\s\S]*?<\/reason>/gi, '');
+        filtered = filtered.replace(/<thought>[\s\S]*?<\/thought>/gi, '');
+        filtered = filtered.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
         // Remove lines that contain only reasoning tags
         filtered = filtered.replace(/^\s*\[THOUGHT\]\s*$/gm, '');
         filtered = filtered.replace(/^\s*\[\/THOUGHT\]\s*$/gm, '');
